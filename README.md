@@ -28,7 +28,6 @@
 | Auth vendeur | Firebase Google Sign-In |
 | Notifications | Web Push API + Service Worker |
 | Hosting | Vercel |
-| Backend | Firebase Cloud Functions (optionnel — push en arrière-plan) |
 
 ## Lancer en local
 

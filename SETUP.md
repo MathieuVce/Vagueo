@@ -78,32 +78,7 @@ vercel --prod
 
 ---
 
-## 5. Notifications push en arrière-plan (optionnel — Blaze requis)
-
-> Sans cette étape, les notifications fonctionnent **quand l'onglet est ouvert**.  
-> Pour notifier un client qui a verrouillé son téléphone, il faut Firebase Cloud Functions.
-
-### Activer le plan Blaze
-Firebase Console → Upgrade → Blaze (pay-as-you-go). Pour ce volume, le coût est **~0 €/mois**.
-
-### Déployer la Cloud Function
-
-```bash
-npm install -g firebase-tools
-firebase login
-firebase init functions   # sélectionner le projet existant, JavaScript, ESLint non
-cd functions && npm install && cd ..
-firebase deploy --only functions
-```
-
-### Activer FCM + VAPID
-1. Firebase Console → **Project Settings → Cloud Messaging**
-2. Générer une paire de clés VAPID → copier la **clé publique**
-3. Ajouter dans `.env` : `VITE_FIREBASE_VAPID_KEY=BPxxxx...`
-
----
-
-## 6. URLs de l'application
+## 5. URLs de l'application
 
 | URL | Usage |
 |-----|-------|

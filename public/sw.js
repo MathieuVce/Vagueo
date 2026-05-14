@@ -13,20 +13,6 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// Push notifications (triggered from main thread or future server push)
-self.addEventListener('push', (e) => {
-  const data = e.data?.json() || {};
-  e.waitUntil(
-    self.registration.showNotification(data.title || 'Vaguéo', {
-      body: data.body || "C'est votre tour — approchez-vous du stand !",
-      icon: '/icon-192.png',
-      tag: 'vagueo-turn',
-      renotify: true,
-      vibrate: [200, 100, 200],
-    })
-  );
-});
-
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   e.waitUntil(
