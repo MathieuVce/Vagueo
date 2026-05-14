@@ -24,36 +24,9 @@
 - Activer **Google** (sign-in providers) → mettre ton email de support → Save
 
 ### Règles Firestore
-Dans **Firestore → Rules**, remplacer par :
+Dans **Firestore → Rules**, coller le contenu du fichier [`firestore.rules`](./firestore.rules) du repo.
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    // Stand : lecture publique
-    // Écriture : stand non revendiqué (vendor_uid vide) → n'importe quel auth
-    //            stand revendiqué → uniquement le vendeur propriétaire
-    match /stands/{standId} {
-      allow read: if true;
-      allow create, update: if request.auth != null;
-    }
-
-    // Historique : tout utilisateur authentifié peut créer un événement (lecture-seule ensuite)
-    match /stands/{standId}/history/{eventId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if false;
-    }
-
-    // Queue : lecture + écriture pour tout utilisateur authentifié
-    // (les clients n'écrivent en pratique que sur leur propre doc via le code)
-    match /queue/{docId} {
-      allow read, write: if request.auth != null;
-    }
-  }
-}
-```
+Les règles de production couvrent : lecture publique des stands, écriture réservée au vendeur propriétaire, incrémentation du compteur autorisée aux clients anonymes, lecture de l'historique réservée aux comptes Google.
 
 ---
 
@@ -72,6 +45,7 @@ VITE_FIREBASE_PROJECT_ID=vagueo
 VITE_FIREBASE_STORAGE_BUCKET=vagueo.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
 VITE_FIREBASE_APP_ID=1:123:web:abc
+VITE_ADMIN_EMAIL=ton_email@gmail.com   # restreint l'accès /admin à cet email
 ```
 
 ---
@@ -135,6 +109,7 @@ firebase deploy --only functions
 |-----|-------|
 | `https://ton-app.vercel.app/` | QR code du stand → écran client |
 | `https://ton-app.vercel.app/vendor` | Dashboard vendeur (sur le smartphone du vendeur) |
+| `https://ton-app.vercel.app/admin` | Dashboard admin — restreint à `VITE_ADMIN_EMAIL` |
 
 Le QR code sur l'affiche doit pointer vers **`/`** (l'URL publique Vercel).
 

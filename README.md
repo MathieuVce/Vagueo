@@ -52,6 +52,14 @@ Pour la configuration Firebase complète (Firestore, Auth, règles, Vercel, noti
 
 Accessible sur `/admin` — connexion Google requise. L'accès est restreint à l'email défini dans la variable d'environnement `VITE_ADMIN_EMAIL` (laisser vide pour désactiver la restriction).
 
+### Fonctionnalités
+
+- **Table de stands** — liste tous les stands en temps réel avec statut (ouvert / fermé / en pause), compteurs file et QR code direct
+- **StandCard** — aperçu compact : avatar, nom, adresse, badge d'état, raccourcis ouverture/pause
+- **StandEditor** (drawer) — édition complète : identité (nom, logo, adresse), liaison du compte vendeur (email Google), débit de service (rythme calme / sprint + tableau de temps par niveau), capacité maximale de file, limite de délais simultanés, état de la file (ouvert/fermé, actif/pause)
+- **Création de stand** — formulaire complet avec les mêmes champs, création dans Firestore + génération automatique du QR code
+- **Suppression** — avec confirmation double en ligne
+- **Stats live** — la table reflète `onSnapshot` en temps réel
 
 ## Tests
 
