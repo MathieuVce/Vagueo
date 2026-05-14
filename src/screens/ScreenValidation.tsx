@@ -71,7 +71,7 @@ const s = {
 };
 
 export default function ScreenValidation({
-  secureColor = '#FF6B9D', colorName = 'Rose', clock, onDone,
+  secureColor = '#FF6B9D', colorName: _colorName = 'Rose', clock, onDone,
 }: ScreenValidationProps) {
   const hh = String(clock.getHours()).padStart(2, '0');
   const mm = String(clock.getMinutes()).padStart(2, '0');

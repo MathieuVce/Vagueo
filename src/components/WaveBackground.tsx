@@ -9,7 +9,9 @@ function hexToRgb(hex: string): string {
 let _waveId = 0;
 function useWaveId() {
   const ref = useRef<string | null>(null);
+  // eslint-disable-next-line react-hooks/refs
   if (!ref.current) ref.current = `wv${_waveId++}`;
+  // eslint-disable-next-line react-hooks/refs
   return ref.current;
 }
 

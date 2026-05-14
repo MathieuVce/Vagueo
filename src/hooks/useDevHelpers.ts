@@ -4,7 +4,7 @@ import {
 } from 'firebase/firestore';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 import { db, auth } from '../firebase.ts';
-import { STAND_ID, WAVE_SIZE } from '../tokens.ts';
+import { STAND_ID } from '../tokens.ts';
 
 // Dev-only Firestore helpers — extracted from VendorApp to keep it lean.
 // Fix #4: decomposed out of VendorApp.

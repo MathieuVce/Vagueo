@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { COLOR, FONT, SIZE, ANIM } from './design.ts';
+import { FONT, SIZE, ANIM } from './design.ts';
 
 type ToastType = 'error' | 'success' | 'info';
 
@@ -45,7 +45,7 @@ export function Toast({ message, type = 'error', duration = 4000, onDone }: Toas
   );
 }
 
-// Hook to manage toast state
+// eslint-disable-next-line react-refresh/only-export-components
 export function useToast() {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 

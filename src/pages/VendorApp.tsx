@@ -37,6 +37,7 @@ export default function VendorApp() {
 
   // Show setup when stand has no name yet after authorization
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stand && user && isAuthorized && !stand.name) setShowSetup(true);
   }, [stand?.name, isAuthorized]);
 

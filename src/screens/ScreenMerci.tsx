@@ -1,5 +1,4 @@
-import VagueoLogo from '../components/VagueoLogo.tsx';
-import VgButton   from '../components/VgButton.tsx';
+import VgButton from '../components/VgButton.tsx';
 import { PALETTE, FONT_SERIF, FONT } from '../tokens.ts';
 
 interface ScreenMerciProps {

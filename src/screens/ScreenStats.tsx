@@ -72,7 +72,6 @@ function buildPrintHTML(stats: Stats, period: Period): string {
 </body></html>`;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const s = stats as any;
 
   const tableRows = ([
@@ -187,6 +186,7 @@ export default function ScreenStats({ onClose }: ScreenStatsProps) {
   const [error,   setError]   = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setEvents([]);
     setError(null);

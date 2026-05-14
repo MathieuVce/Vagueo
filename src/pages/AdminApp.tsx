@@ -10,7 +10,7 @@ import {
   SECURE_COLORS, FLOW_RATE_LABELS,
   FLOW_SLOW_DEFAULT, FLOW_SPRINT_DEFAULT, calcMinPerPerson, FLOW_RATE_DEFAULT,
 } from '../tokens.ts';
-import { COLOR, FONT, TEXT, SIZE, SHADOW, FONT as FONTS } from '../ui/design.ts';
+import { COLOR, FONT, TEXT, SIZE, SHADOW } from '../ui/design.ts';
 import { Button, Field, NumberField, Toggle, Segment, Drawer, DrawerBody, DrawerHeader, useToast, Label } from '../ui/index.ts';
 import VagueoLogo from '../components/VagueoLogo.tsx';
 import type { Stand } from '../types.ts';

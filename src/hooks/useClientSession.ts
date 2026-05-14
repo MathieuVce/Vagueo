@@ -73,6 +73,7 @@ export function useClientSession(
 
   // ─── Live position: active clients ahead of me ────────────────
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!uid || !client?.queue_position) { setPositionAhead(0); return; }
     const myPos = client.queue_position;
     // Fix #1: filter by stand_id to support multi-stand deployments

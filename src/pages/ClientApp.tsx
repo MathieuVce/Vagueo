@@ -80,6 +80,7 @@ export default function ClientApp() {
   useEffect(() => {
     if (orangePromptRef.current) clearTimeout(orangePromptRef.current);
     if (orangeRespRef.current)   clearTimeout(orangeRespRef.current);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOrangeModal(false);
 
     if (step !== 'checkin' || !client?.called_at || stand?.is_paused) return;
@@ -103,6 +104,7 @@ export default function ClientApp() {
   useEffect(() => {
     if (servicePromptRef.current) clearTimeout(servicePromptRef.current);
     if (serviceRespRef.current)   clearTimeout(serviceRespRef.current);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setServiceModal(false);
 
     if (step !== 'validation' || !client?.claimed_at || stand?.is_paused) return;
