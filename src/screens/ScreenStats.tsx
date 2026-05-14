@@ -203,7 +203,6 @@ export default function ScreenStats({ onClose }: ScreenStatsProps) {
         setLoading(false);
       },
       (err) => {
-        console.error('Stats query failed:', err);
         setError(err.message);
         setLoading(false);
       },
