@@ -33,8 +33,8 @@
 ## Lancer en local
 
 ```bash
-git clone https://github.com/ton-username/vagueo.git
-cd vagueo
+git clone https://github.com/MathieuVce/Vagueo.git
+cd Vagueo
 cp .env.example .env   # remplir avec vos clés Firebase
 npm install
 npm run dev
