@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Stands ───────────────────────────────────────────────────
+    match /stands/{standId} {
+      // Lecture publique (clients et vendeurs)
+      allow read: if true;
+
+      // Création : tout utilisateur authentifié (autoCreate vendeur, admin)
+      allow create: if request.auth != null;
+
+      // Modification : vendeur propriétaire, utilisateur Google non-anonyme (admin),
+      // ou client anonyme qui incrémente seulement queue_counter.
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.vendor_uid
+        ||
+        request.auth.token.firebase.sign_in_provider != 'anonymous'
+        ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['queue_counter'])
+      );
+
+      // Suppression : vendeur propriétaire ou utilisateur Google (admin)
+      allow delete: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+
+      // ─── Historique ─────────────────────────────────────────────
+      match /history/{entryId} {
+        // Lecture : tout utilisateur Google authentifié (non-anonyme)
+        // Le get() sur vendor_uid échoue si le champ est absent — on évite ce cas
+        // en acceptant tout compte Google, ce qui suffit pour un MVP monovendeur.
+        allow read: if request.auth != null
+          && request.auth.token.firebase.sign_in_provider != 'anonymous';
+
+        // Écriture : tout utilisateur authentifié (clients anonymes inclus)
+        allow create: if request.auth != null;
+      }
+    }
+
+    // ─── File d'attente ───────────────────────────────────────────
+    match /queue/{userId} {
+      // Lecture : tout utilisateur authentifié
+      // (nécessaire pour les requêtes de comptage côté vendeur et client)
+      allow read: if request.auth != null;
+
+      // Création : son propre document, ou un compte Google (vendeur/admin, pour les outils dev)
+      allow create: if request.auth != null && (
+        request.auth.uid == userId
+        || request.auth.token.firebase.sign_in_provider != 'anonymous'
+      );
+
+      // Mise à jour : le client (son propre doc) ou le vendeur du stand concerné
+      allow update: if request.auth != null && (
+        request.auth.uid == userId
+        ||
+        get(/databases/$(database)/documents/stands/$(resource.data.stand_id)).data.vendor_uid == request.auth.uid
+      );
+
+      allow delete: if false;
+    }
+  }
+}
