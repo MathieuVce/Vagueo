@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #fbfaf7;
+  --color-ink: #11141a;
+  --color-mute: #6b6f78;
+  --color-line: rgba(17, 20, 26, 0.08);
+  --color-wait: oklch(0.46 0.13 250);
+  --color-wait-soft: oklch(0.92 0.04 250);
+  --color-call: oklch(0.74 0.18 55);
+  --color-call-soft: oklch(0.95 0.06 70);
+  --font-family-sans: "Inter Tight", "Helvetica Neue", system-ui, sans-serif;
+  --font-family-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-family-serif: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #fbfaf7;
+  font-family: 'Inter Tight', -apple-system, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button { font-family: inherit; }
+button:active { transform: scale(0.97); }
+
+/* Wave scroll — used by WaveBackground SVG paths */
+@keyframes vagueoWaveX {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-400px); }
+}
+
+/* Seamless wave loop — SVG element is 200% wide, -50% = exactly one screen width.
+   translate3d keeps the element on the GPU compositor layer and prevents
+   animation resets caused by viewport changes (mobile Safari address bar). */
+@keyframes vagueoWaveLoop {
+  from { transform: translate3d(0,     0, 0); }
+  to   { transform: translate3d(-50%,  0, 0); }
+}
+
+/* Particle float — used by WaveParticles circles */
+@keyframes vagueoFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+/* Live indicator dot pulse */
+@keyframes vagueoPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50%      { opacity: 1;   transform: scale(1.1); }
+}
+
+/* Check-in button glow pulse */
+@keyframes vagueoBlink {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 140, 40, 0.5); }
+  50%      { box-shadow: 0 0 0 22px rgba(255, 140, 40, 0); }
+}
+
+/* Status badge slow pulse */
+@keyframes vagueoSlowPulse {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+
+/* Bottom-sheet slide up — used by ModalRating */
+@keyframes vagueoSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Screen entry */
+@keyframes vagueoFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
