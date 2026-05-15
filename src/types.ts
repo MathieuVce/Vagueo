@@ -18,6 +18,8 @@ export interface Stand {
   vendor_uid?: string;
   vendor_email?: string;
   createdAt?: Timestamp;
+  rating_count?: number;
+  rating_sum?: number;
 }
 
 export type QueueStatus = 'waiting' | 'orange' | 'claimed' | 'done';

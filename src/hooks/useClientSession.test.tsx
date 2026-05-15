@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useClientSession } from './useClientSession';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
-import { onSnapshot, runTransaction, updateDoc, getDocs, addDoc } from 'firebase/firestore';
+import { onSnapshot, runTransaction, updateDoc, getDocs, writeBatch } from 'firebase/firestore';
 
 describe('useClientSession', () => {
   const mockStand: any = { is_open: true, is_paused: false, min_per_person: 2 };
@@ -170,6 +170,8 @@ describe('useClientSession', () => {
   // ─── writeHistory ──────────────────────────────────────────────
 
   it('writeHistory adds history doc on leave when client exists', async () => {
+    const mockBatch = { set: vi.fn(), update: vi.fn(), delete: vi.fn(), commit: vi.fn().mockResolvedValue({}) };
+    (writeBatch as any).mockReturnValue(mockBatch);
     const result = await boot();
     await act(async () => {
       fireClientSnapshot(result, {
@@ -181,10 +183,13 @@ describe('useClientSession', () => {
       });
     });
     await act(async () => { await result.current[3].leave('left_voluntarily'); });
-    expect(addDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ exit_reason: 'left_voluntarily' }));
+    expect(mockBatch.set).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ exit_reason: 'left_voluntarily' }));
+    expect(mockBatch.update).not.toHaveBeenCalled();
   });
 
   it('writeHistory includes rating data when done with rating', async () => {
+    const mockBatch = { set: vi.fn(), update: vi.fn(), delete: vi.fn(), commit: vi.fn().mockResolvedValue({}) };
+    (writeBatch as any).mockReturnValue(mockBatch);
     const result = await boot();
     await act(async () => {
       fireClientSnapshot(result, { status: 'claimed', queue_position: 1, delay_used: false });
@@ -192,6 +197,7 @@ describe('useClientSession', () => {
     await act(async () => {
       await result.current[3].done('completed', { rating: 4, feedback: 'Super !' });
     });
-    expect(addDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ rating: 4, feedback: 'Super !' }));
+    expect(mockBatch.set).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ rating: 4, feedback: 'Super !' }));
+    expect(mockBatch.update).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ rating_count: expect.anything(), rating_sum: expect.anything() }));
   });
 });

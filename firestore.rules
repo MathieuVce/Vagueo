@@ -17,7 +17,7 @@ service cloud.firestore {
         ||
         request.auth.token.firebase.sign_in_provider != 'anonymous'
         ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['queue_counter'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['queue_counter', 'rating_count', 'rating_sum'])
       );
 
       // Suppression : vendeur propriétaire ou utilisateur Google (admin)
@@ -56,7 +56,9 @@ service cloud.firestore {
         get(/databases/$(database)/documents/stands/$(resource.data.stand_id)).data.vendor_uid == request.auth.uid
       );
 
-      allow delete: if false;
+      // Suppression : utilisateur Google uniquement (vendeur/admin — outils dev)
+      allow delete: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
   }
 }

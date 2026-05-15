@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import {
-  doc, onSnapshot, updateDoc, addDoc,
+  doc, onSnapshot, updateDoc,
   serverTimestamp, collection, query, where,
-  deleteField, runTransaction, getDocs,
+  deleteField, runTransaction, getDocs, writeBatch, increment,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase.ts';
 import { WAVE_SIZE, STAND_ID } from '../tokens.ts';
@@ -126,7 +126,15 @@ export function useClientSession(
       if (c.claimed_at)
         record.service_ms = nowMs - c.claimed_at.toMillis();
     } catch (_) {}
-    await addDoc(historyCol, record);
+    const batch = writeBatch(db);
+    batch.set(doc(historyCol), record);
+    if (ratingData) {
+      batch.update(standRef, {
+        rating_count: increment(1),
+        rating_sum:   increment(ratingData.rating),
+      });
+    }
+    await batch.commit();
   }
 
   // ─── Actions ───────────────────────────────────────────────────
