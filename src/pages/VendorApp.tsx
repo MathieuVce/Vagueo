@@ -4,7 +4,7 @@ import { useVendorAuth }     from '../hooks/useVendorAuth.ts';
 import { useClock }          from '../hooks/useClock.ts';
 import { useQueueCounts }    from '../hooks/useQueueCounts.ts';
 import { useDevHelpers }     from '../hooks/useDevHelpers.ts';
-import { waveIntervalMs, PALETTE, FONT } from '../tokens.ts';
+import { waveIntervalMs, PALETTE, FONT, STAND_ID } from '../tokens.ts';
 import ScreenVendorLogin  from '../screens/ScreenVendorLogin.tsx';
 import ScreenVendor       from '../screens/ScreenVendor.tsx';
 import ScreenVendorSetup  from '../screens/ScreenVendorSetup.tsx';
@@ -103,6 +103,24 @@ export default function VendorApp() {
         </div>
         <button onClick={signOut} style={{ marginTop: 8, border: `1px solid ${p.line}`, borderRadius: 12, padding: '10px 20px', cursor: 'pointer', background: 'transparent', fontFamily: FONT, fontSize: 14, color: p.ink }}>
           Changer de compte
+        </button>
+      </div>
+    );
+  }
+
+  // ─── Pending approval ─────────────────────────────────────────
+  if (stand.status === 'pending_approval') {
+    return (
+      <div style={{ width: '100%', height: '100%', background: p.paper, fontFamily: FONT, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 32px', gap: 16, textAlign: 'center' }}>
+        <div style={{ fontSize: 40, opacity: 0.2 }}>〜</div>
+        <div style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.01em' }}>En attente d'approbation</div>
+        <div style={{ fontSize: 13, color: p.mute, lineHeight: 1.7, maxWidth: 300 }}>
+          Votre stand a été créé et est en cours de validation par l'administrateur.<br />
+          Vous serez notifié dès qu'il est approuvé.
+        </div>
+        <div style={{ marginTop: 8, fontSize: 11, color: p.mute, fontFamily: 'monospace' }}>{STAND_ID}</div>
+        <button onClick={signOut} style={{ marginTop: 16, border: `1px solid ${p.line}`, borderRadius: 12, padding: '10px 20px', cursor: 'pointer', background: 'transparent', fontFamily: FONT, fontSize: 14, color: p.ink }}>
+          Se déconnecter
         </button>
       </div>
     );

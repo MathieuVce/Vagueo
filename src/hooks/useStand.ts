@@ -60,7 +60,7 @@ export function useStand(options?: UseStandOptions): [Stand | null, StandActions
         const secure_color = SECURE_COLORS[(data.current_wave ?? 0) % SECURE_COLORS.length].hex;
         setStand({ ...data, secure_color });
       } else if (autoCreate) {
-        await setDoc(standRef, { ...DEFAULT_STAND, createdAt: serverTimestamp() });
+        await setDoc(standRef, { ...DEFAULT_STAND, status: 'pending_approval', createdAt: serverTimestamp() });
       }
     });
     return unsub;

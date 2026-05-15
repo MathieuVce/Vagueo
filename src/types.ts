@@ -20,6 +20,7 @@ export interface Stand {
   createdAt?: Timestamp;
   rating_count?: number;
   rating_sum?: number;
+  status?: 'active' | 'pending_approval';
 }
 
 export type QueueStatus = 'waiting' | 'orange' | 'claimed' | 'done';

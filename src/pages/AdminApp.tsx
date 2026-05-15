@@ -399,6 +399,7 @@ function CreateStandModal({ onClose, onCreated }: { onClose: () => void; onCreat
       min_per_person: calcMinPerPerson(FLOW_RATE_DEFAULT, slow, sprint),
       max_queue_size: limitQueue ? maxQueueSize : null,
       max_delayed:    limitDelay ? maxDelayed   : null,
+      status: 'active',
       createdAt: serverTimestamp(),
     });
     setSaving(false);
@@ -456,7 +457,7 @@ function CreateStandModal({ onClose, onCreated }: { onClose: () => void; onCreat
 }
 
 // ─── Stand Card ───────────────────────────────────────────────────
-function StandCard({ stand, onEdit, onStats }: { stand: StandDoc; onEdit: () => void; onStats: () => void }) {
+function StandCard({ stand, onEdit, onStats, onApprove }: { stand: StandDoc; onEdit: () => void; onStats: () => void; onApprove?: () => void }) {
   const flowLabel = FLOW_RATE_LABELS[(stand.flow_rate ?? FLOW_RATE_DEFAULT) - 1];
   return (
     <div style={{ background: COLOR.paper, border: `1px solid ${COLOR.line}`, borderRadius: SIZE.r5, padding: '18px 20px', fontFamily: FONT.sans }}>
@@ -490,6 +491,9 @@ function StandCard({ stand, onEdit, onStats }: { stand: StandDoc; onEdit: () => 
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
+          {onApprove && (
+            <Button variant="primary" size="sm" onClick={onApprove}>Approuver</Button>
+          )}
           <Button variant="ghost" size="sm" onClick={onStats}>Stats</Button>
           <Button variant="ghost" size="sm" onClick={onEdit}>Modifier</Button>
         </div>
@@ -577,6 +581,10 @@ export default function AdminApp() {
     );
   }
 
+  async function approveStand(id: string) {
+    await updateDoc(doc(db, 'stands', id), { status: 'active' });
+  }
+
   const filtered = search.trim()
     ? stands.filter(s =>
         s.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -584,6 +592,9 @@ export default function AdminApp() {
         s._id.toLowerCase().includes(search.toLowerCase())
       )
     : stands;
+
+  const pending = filtered.filter(s => s.status === 'pending_approval');
+  const active  = filtered.filter(s => s.status !== 'pending_approval');
 
   return (
     <div style={{ width: '100%', height: '100%', background: COLOR.surface, fontFamily: FONT.sans, overflowY: 'auto' }}>
@@ -629,17 +640,42 @@ export default function AdminApp() {
           </div>
         )}
 
-        {filtered.length === 0 ? (
+        {pending.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <div style={{ ...TEXT.label, color: COLOR.warning, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                En attente d'approbation
+              </div>
+              <span style={{ padding: '2px 8px', borderRadius: SIZE.rFull, background: COLOR.warningBg, ...TEXT.caption, color: COLOR.warning, fontWeight: 700 }}>
+                {pending.length}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {pending.map(stand => (
+                <div key={stand._id} style={{ borderRadius: SIZE.r5, border: `1.5px solid ${COLOR.warning}`, overflow: 'hidden' }}>
+                  <StandCard
+                    stand={stand}
+                    onEdit={() => setEditing(stand)}
+                    onStats={() => setStatsStand(stand)}
+                    onApprove={() => approveStand(stand._id)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {active.length === 0 && pending.length === 0 ? (
           <div style={{ textAlign: 'center', paddingTop: 48, ...TEXT.body, color: COLOR.mute }}>
             {stands.length === 0 ? 'Aucun stand créé.' : 'Aucun résultat.'}
           </div>
-        ) : (
+        ) : active.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {filtered.map(stand => (
+            {active.map(stand => (
               <StandCard key={stand._id} stand={stand} onEdit={() => setEditing(stand)} onStats={() => setStatsStand(stand)} />
             ))}
           </div>
-        )}
+        ) : null}
       </div>
 
       {editing    && <StandEditor stand={editing} onClose={() => setEditing(null)} onDeleted={() => setEditing(null)} />}
