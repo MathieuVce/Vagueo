@@ -1,66 +1,76 @@
-name: Test & Deploy to Vercel
+name: CI / Deploy
 
 on:
   push:
-    branches:
-      - deploy
+    branches: [main, deploy]
   pull_request:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
+  # ── Runs on every push to main and on PRs ─────────────────────
   test:
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "24"
           cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test -- --run
+      - run: npm run build
 
-      - name: Lint
-        run: npm run lint
+      # Save the build so the deploy job can reuse it without rebuilding
+      - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+          retention-days: 7
 
-      - name: Run tests
-        run: npm test -- --run
-
-      - name: Build
-        run: npm run build
-
+  # ── Runs only on push to deploy ───────────────────────────────
+  # Retrieves the dist/ artifact produced by the test job for the same
+  # commit (push main:deploy reuses the same SHA), so nothing is rebuilt.
   deploy:
+    if: github.ref == 'refs/heads/deploy'
     runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push'
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: "24"
-          cache: "npm"
+      - name: Download tested build
+        run: |
+          ARTIFACT_ID=$(gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name == "dist-${{ github.sha }}") | .id' | head -1)
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "::error::No tested build found for ${{ github.sha }}. Push to main first."
+            exit 1
+          fi
+          gh api "repos/${{ github.repository }}/actions/artifacts/${ARTIFACT_ID}/zip" > dist.zip
+          unzip dist.zip -d dist/
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: npm ci
+      # Build the Vercel output directory from the downloaded dist/
+      # without triggering a server-side rebuild (--prebuilt).
+      - name: Prepare Vercel output
+        run: |
+          mkdir -p .vercel/output/static
+          cp -r dist/. .vercel/output/static/
+          node -e "
+            const v = require('./vercel.json');
+            const rewrites = (v.rewrites || []).map(r => ({ src: r.source, dest: r.destination }));
+            const config = { version: 3, routes: [{ handle: 'filesystem' }, ...rewrites] };
+            require('fs').writeFileSync('.vercel/output/config.json', JSON.stringify(config, null, 2));
+          "
 
       - name: Pull Vercel environment
         run: npx vercel pull --yes --environment=production
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Build
-        run: npx vercel build --prod
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
