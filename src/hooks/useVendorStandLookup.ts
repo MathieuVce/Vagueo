@@ -12,12 +12,15 @@ export type StandLookupResult = 'loading' | 'redirecting' | 'none';
 // Found → redirect to /vendor?stand=<id> and return 'redirecting'.
 // Not found → return 'none' so the caller can show the creation form.
 export function useVendorStandLookup(user: User | null | undefined): StandLookupResult {
-  const [result, setResult] = useState<StandLookupResult>('loading');
+  const [result, setResult] = useState<StandLookupResult>(
+    // Compute initial state eagerly: skip to 'none' if we already have a stand
+    // ID or there's no authenticated user — no query needed in those cases.
+    () => (STAND_ID || !user || user.isAnonymous ? 'none' : 'loading'),
+  );
 
   useEffect(() => {
-    if (STAND_ID) { setResult('none'); return; }
-    if (!user || user.isAnonymous) { setResult('none'); return; }
-
+    if (STAND_ID || !user || user.isAnonymous) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setResult('loading');
     getDocs(
       query(collection(db, 'stands'), where('vendor_uid', '==', user.uid), limit(1)),
