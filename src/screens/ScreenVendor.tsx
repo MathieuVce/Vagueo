@@ -291,9 +291,17 @@ export default function ScreenVendor({
             <div style={s.statsBigPresent}>{presentCount}</div>
             <div style={s.statsLabel}>devant le stand</div>
           </div>
-          <div style={s.statsCell(false)}>
+          <div style={s.statsCell(true)}>
             <div style={s.statsBig}>{waitingCount}</div>
             <div style={s.statsLabel}>en attente</div>
+          </div>
+          <div style={s.statsCell(false)}>
+            <div style={s.statsBig}>
+              {waitingCount > 0
+                ? `~${Math.max(1, Math.round(waitingCount * (stand.min_per_person ?? 3)))}m`
+                : '—'}
+            </div>
+            <div style={s.statsLabel}>attente max</div>
           </div>
         </div>
       </div>
