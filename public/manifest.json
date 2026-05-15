@@ -1,7 +1,7 @@
 {
   "name": "Vaguéo",
   "short_name": "Vaguéo",
-  "description": "File d'attente sans frustration",
+  "description": "Attendez où vous voulez",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
