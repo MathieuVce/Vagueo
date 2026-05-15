@@ -8,6 +8,9 @@ import * as useQueueCountsHook from '../hooks/useQueueCounts';
 vi.mock('../hooks/useStand');
 vi.mock('../hooks/useVendorAuth');
 vi.mock('../hooks/useQueueCounts');
+vi.mock('../hooks/useVendorStandLookup', () => ({
+  useVendorStandLookup: () => 'none',
+}));
 vi.mock('../hooks/useDevHelpers', () => ({
   useDevHelpers: () => ({
     devAddClient: vi.fn(), devRemoveClient: vi.fn(),

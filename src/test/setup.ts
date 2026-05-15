@@ -66,6 +66,9 @@ vi.mock('firebase/auth', () => {
   };
 });
 
+// Default URL so STAND_ID is non-empty in tests that don't override it
+window.history.pushState({}, '', '/?stand=test-stand');
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

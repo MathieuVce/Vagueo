@@ -8,6 +8,9 @@ import * as useQueueCountsHook from '../hooks/useQueueCounts';
 vi.mock('../hooks/useStand');
 vi.mock('../hooks/useVendorAuth');
 vi.mock('../hooks/useQueueCounts');
+vi.mock('../hooks/useVendorStandLookup', () => ({
+  useVendorStandLookup: () => 'none',
+}));
 vi.mock('../hooks/useDevHelpers', () => ({
   useDevHelpers: () => ({
     devAddClient: vi.fn(), devRemoveClient: vi.fn(),
@@ -207,6 +210,23 @@ describe('VendorApp', () => {
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({ ...mockAuth, isUnclaimed: true });
     render(<VendorApp />);
     expect(claimStand).toHaveBeenCalledWith('v1', 'vendor@test.com');
+  });
+
+  // ─── Pending approval ────────────────────────────────────────
+
+  it('shows pending approval screen when stand status is pending_approval', () => {
+    (useStandHook.useStand as any).mockReturnValue([{ ...mockStand, status: 'pending_approval' }, mockActions]);
+    render(<VendorApp />);
+    expect(screen.getByText(/En attente d'approbation/i)).toBeInTheDocument();
+  });
+
+  it('allows sign out from pending approval screen', () => {
+    const signOut = vi.fn();
+    (useStandHook.useStand as any).mockReturnValue([{ ...mockStand, status: 'pending_approval' }, mockActions]);
+    (useVendorAuthHook.useVendorAuth as any).mockReturnValue({ ...mockAuth, signOut });
+    render(<VendorApp />);
+    fireEvent.click(screen.getByText(/Se déconnecter/i));
+    expect(signOut).toHaveBeenCalled();
   });
 
   // ─── Overlays ─────────────────────────────────────────────────

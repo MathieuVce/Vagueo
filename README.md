@@ -14,9 +14,9 @@
 
 **Côté client** — le visiteur scanne le QR code du stand, rejoint la file sans créer de compte. Il reçoit une notification push quand son tour approche, confirme sa présence d'un tap et montre l'écran coloré anti-fraude au vendeur.
 
-**Côté vendeur** — le gérant ouvre `/vendor`, se connecte avec Google, configure son stand (nom, logo, couleur). Un algorithme de vagues avance automatiquement selon le débit réglé. Les absents non répondants sont retirés de la file automatiquement.
+**Côté vendeur** — le gérant ouvre `/vendor?stand=<id>` (via le QR code de gestion) ou `/vendor` sans paramètre pour créer son stand. Connexion Google obligatoire. Les nouveaux stands partent en `pending_approval` jusqu'à validation admin. Un algorithme de vagues avance automatiquement selon le débit réglé. Les absents non répondants sont retirés de la file automatiquement.
 
-**Côté admin** — `/admin` donne accès à un tableau de bord de gestion multi-stands réservé à l'email défini dans `VITE_ADMIN_EMAIL`. Création, édition et suppression de stands, liaison vendeur, QR codes et statistiques de file en temps réel.
+**Côté admin** — `/admin` donne accès à un tableau de bord de gestion multi-stands réservé à l'email défini dans `VITE_ADMIN_EMAIL`. Création, édition et suppression de stands, approbation des stands auto-créés par les vendeurs, liaison vendeur, QR codes et statistiques de file en temps réel.
 
 ## Stack
 
@@ -57,6 +57,7 @@ Accessible sur `/admin` — connexion Google requise. L'accès est restreint à 
 - **StandCard** — aperçu compact : avatar, nom, adresse, badge d'état, raccourcis ouverture/pause
 - **StandEditor** (drawer) — édition complète : identité (nom, logo, adresse), liaison du compte vendeur (email Google), débit de service (rythme calme / sprint + tableau de temps par niveau), capacité maximale de file, limite de délais simultanés, état de la file (ouvert/fermé, actif/pause)
 - **Création de stand** — formulaire complet avec les mêmes champs, création dans Firestore + génération automatique du QR code
+- **Approbation** — les stands auto-créés par les vendeurs (`pending_approval`) apparaissent dans une section dédiée ; un clic les passe en `active`
 - **Suppression** — avec confirmation double en ligne
 - **Stats live** — la table reflète `onSnapshot` en temps réel
 
@@ -76,19 +77,21 @@ npm run test:components   # composants partagés
 npm run test:flows        # parcours utilisateurs uniquement
 ```
 
-### Tests unitaires — 37 fichiers · 274 tests
+### Tests unitaires — 43 fichiers · 319 tests
 
 | Zone | Fichiers couverts | Lignes |
 |---|---|---|
-| `src/hooks` | useStand, useVendorAuth, useClientSession, useQueueCounts, useClock, useDevHelpers, usePush | 97 % |
-| `src/screens` | ScreenSplash, ScreenAttente, ScreenCheckin, ScreenValidation, ScreenStats, ScreenVendor, ScreenVendorLogin, ScreenVendorSetup, ScreenQRCode, ScreenMerci, DevModeChoice | 98 % |
+| `src/hooks` | useStand (+ cas STAND_ID vide), useVendorAuth, useClientSession, useQueueCounts, useClock, useDevHelpers, usePush | 97 % |
+| `src/screens` | ScreenSplash, ScreenAttente, ScreenCheckin, ScreenValidation, ScreenStats, ScreenVendor, ScreenVendorLogin, ScreenVendorSetup, ScreenVendorCreate, ScreenQRCode, ScreenMerci, DevModeChoice | 95 % |
 | `src/ui` | Button, Field, Label, Segment, Toggle, Toast, Drawer | 96 % |
 | `src/components` | ModalDialog, ModalRating, VgButton, ErrorBoundary, VagueoLogo, WaveBackground, SecureColorBg | 54 %* |
-| `src/pages` | AdminApp, VendorApp, ClientApp | 93 % |
+| `src/pages` | AdminApp, VendorApp, ClientApp (+ cas sans `?stand=`) | 88 % |
 
-**Couverture globale : 87 % instructions · 90 % lignes**
+\* `RippleCanvas` et `WaveBackground` sont des animations canvas non exercées en tests.
 
-### Tests de flux — 2 fichiers · 14 tests
+**Couverture globale : 85 % instructions · 80 % branches · 88 % lignes**
+
+### Tests de flux — 3 fichiers · 22 parcours
 
 Parcours utilisateurs complets avec hooks mockés et screens réels (sauf exceptions Firebase).
 
@@ -114,6 +117,17 @@ Parcours utilisateurs complets avec hooks mockés et screens réels (sauf except
 | QR code | overlay QR → bouton × → retour tableau de bord |
 | Statistiques | overlay stats → "Fermer" → retour tableau de bord |
 | Setup initial | stand sans nom → form auto-ouvert → sauvegarder → tableau de bord |
+
+**`VendorApp.nostand.test.tsx` — 7 cas + 1 flux** *(STAND_ID vide)*
+
+| Cas / Parcours | Ce qui est vérifié |
+|---|---|
+| Auth en cours | spinner affiché, pas d'écran de création |
+| Utilisateur null | écran de login affiché |
+| Utilisateur anonyme | écran de login affiché |
+| Google connecté | `ScreenVendorCreate` affiché avec l'email |
+| Redirection | `window.location.replace('/vendor?stand=<id>')` déclenché |
+| Flux complet | chargement → login → connexion → `ScreenVendorCreate` → création → redirection |
 
 ---
 
