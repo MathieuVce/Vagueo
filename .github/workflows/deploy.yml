@@ -38,7 +38,7 @@ jobs:
       - name: Notify Vercel
         uses: vercel/repository-dispatch/actions/status@v1
         with:
-          name: Vercel - vagueo: lint
+          name: "Vercel - vagueo: lint"
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
