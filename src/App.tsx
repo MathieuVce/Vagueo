@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 
 const ClientApp = lazy(() => import('./pages/ClientApp.tsx'));
@@ -15,6 +16,7 @@ export default function App() {
          path.startsWith('/vendor') ? <VendorApp /> : <ClientApp />}
       </Suspense>
       <Analytics />
+      <SpeedInsights />
     </ErrorBoundary>
   );
 }
