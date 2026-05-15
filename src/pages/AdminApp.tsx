@@ -1,7 +1,7 @@
 import { useState, useEffect, type CSSProperties } from 'react';
 import {
   collection, onSnapshot, doc, updateDoc, deleteDoc,
-  query, where, addDoc, serverTimestamp, deleteField,
+  query, where, addDoc, serverTimestamp, deleteField, orderBy, limit,
 } from 'firebase/firestore';
 import { QRCodeSVG } from 'qrcode.react';
 import { db } from '../firebase.ts';
@@ -13,10 +13,18 @@ import {
 import { COLOR, FONT, TEXT, SIZE, SHADOW } from '../ui/design.ts';
 import { Button, Field, NumberField, Toggle, Segment, Drawer, DrawerBody, DrawerHeader, useToast, Label } from '../ui/index.ts';
 import VagueoLogo from '../components/VagueoLogo.tsx';
+import ScreenStats from '../screens/ScreenStats.tsx';
 import type { Stand } from '../types.ts';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface StandDoc extends Omit<Stand, 'secure_color'> { _id: string; }
+
+interface RatingEntry {
+  id: string;
+  rating?: number;
+  feedback?: string;
+  done_at?: { toDate?: () => Date };
+}
 
 // ─── Admin-specific small components ─────────────────────────────
 function Avatar({ stand }: { stand: StandDoc }) {
@@ -100,6 +108,7 @@ function StandEditor({ stand, onClose, onDeleted }: { stand: StandDoc; onClose: 
   const [confirmUnlink,setConfirmUnlink]= useState(false);
   const [liveCount,    setLiveCount]    = useState<number | null>(null);
   const [copied,       setCopied]       = useState(false);
+  const [recentRatings, setRecentRatings] = useState<RatingEntry[]>([]);
   const { show: showToast, node: toastNode } = useToast();
 
   const clientUrl = `${window.location.origin}/?stand=${stand._id}`;
@@ -110,6 +119,19 @@ function StandEditor({ stand, onClose, onDeleted }: { stand: StandDoc; onClose: 
     return onSnapshot(
       query(collection(db, 'queue'), where('stand_id', '==', stand._id), where('status', 'in', ['waiting', 'orange', 'claimed'])),
       snap => setLiveCount(snap.size),
+    );
+  }, [stand._id]);
+
+  useEffect(() => {
+    return onSnapshot(
+      query(collection(db, 'stands', stand._id, 'history'), orderBy('done_at', 'desc'), limit(50)),
+      snap => {
+        setRecentRatings(
+          snap.docs
+            .map(d => ({ id: d.id, ...d.data() } as RatingEntry))
+            .filter(e => (e.rating ?? 0) > 0)
+        );
+      },
     );
   }, [stand._id]);
 
@@ -276,6 +298,54 @@ function StandEditor({ stand, onClose, onDeleted }: { stand: StandDoc; onClose: 
             {limitDelay && <div style={{ marginTop: 8 }}><NumberField value={maxDelayed} unit="délais max" onChange={v => setMaxDelayed(Math.max(0, v))} /></div>}
           </div>
 
+          {/* Avis */}
+          {recentRatings.length > 0 && (() => {
+            const avgR = recentRatings.reduce((s, e) => s + (e.rating ?? 0), 0) / recentRatings.length;
+            const withText = recentRatings.filter(e => e.feedback?.trim());
+            return (
+              <div>
+                <Label>Avis clients</Label>
+                <div style={{ marginTop: 10, padding: '12px 14px', borderRadius: SIZE.r3, background: COLOR.surface, border: `1px solid ${COLOR.line}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ ...TEXT.monoLg, fontSize: 28, color: '#f59e0b', fontWeight: 700 }}>
+                    {avgR.toFixed(1)}
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', gap: 1, marginBottom: 3 }}>
+                      {[1,2,3,4,5].map(i => (
+                        <span key={i} style={{ fontSize: 13, color: i <= Math.round(avgR) ? '#f59e0b' : COLOR.line }}>★</span>
+                      ))}
+                    </div>
+                    <div style={{ ...TEXT.caption, color: COLOR.mute }}>
+                      {recentRatings.length} avis récents
+                    </div>
+                  </div>
+                </div>
+                {withText.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    {withText.slice(0, 8).map(e => {
+                      const date = e.done_at?.toDate?.();
+                      const dateStr = date ? date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+                      const stars = e.rating ?? 0;
+                      return (
+                        <div key={e.id} style={{ padding: '8px 0', borderBottom: `1px solid ${COLOR.line}`, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', gap: 1, flexShrink: 0, marginTop: 2 }}>
+                            {[1,2,3,4,5].map(i => (
+                              <span key={i} style={{ fontSize: 9, color: i <= stars ? '#f59e0b' : COLOR.line }}>★</span>
+                            ))}
+                          </div>
+                          <div style={{ flex: 1, ...TEXT.small, color: COLOR.ink, lineHeight: 1.5, fontStyle: 'italic' }}>
+                            "{e.feedback}"
+                          </div>
+                          <div style={{ flexShrink: 0, ...TEXT.caption, color: COLOR.mute }}>{dateStr}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Actions */}
           <div style={{ display: 'flex', gap: 10 }}>
             <Button full variant="primary" onClick={handleSave} loading={saving}>Sauvegarder</Button>
@@ -386,7 +456,7 @@ function CreateStandModal({ onClose, onCreated }: { onClose: () => void; onCreat
 }
 
 // ─── Stand Card ───────────────────────────────────────────────────
-function StandCard({ stand, onEdit }: { stand: StandDoc; onEdit: () => void }) {
+function StandCard({ stand, onEdit, onStats }: { stand: StandDoc; onEdit: () => void; onStats: () => void }) {
   const flowLabel = FLOW_RATE_LABELS[(stand.flow_rate ?? FLOW_RATE_DEFAULT) - 1];
   return (
     <div style={{ background: COLOR.paper, border: `1px solid ${COLOR.line}`, borderRadius: SIZE.r5, padding: '18px 20px', fontFamily: FONT.sans }}>
@@ -419,13 +489,21 @@ function StandCard({ stand, onEdit }: { stand: StandDoc; onEdit: () => void }) {
             )}
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onEdit}>Modifier</Button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <Button variant="ghost" size="sm" onClick={onStats}>Stats</Button>
+          <Button variant="ghost" size="sm" onClick={onEdit}>Modifier</Button>
+        </div>
       </div>
 
       <div style={{ marginTop: 14, display: 'flex', gap: 10, borderTop: `1px solid ${COLOR.line}`, paddingTop: 14 }}>
         <Metric label="Total clients" value={stand.queue_counter ?? 0} />
-        <Metric label="Vague"         value={stand.current_wave  ?? 0} />
-        <Metric label="Délais max"    value={stand.max_delayed != null ? String(stand.max_delayed) : '∞'} />
+        <Metric
+          label="Note moy."
+          value={(stand.rating_count ?? 0) > 0
+            ? `${((stand.rating_sum ?? 0) / stand.rating_count!).toFixed(1)} ★`
+            : '— ★'}
+        />
+        <Metric label="Avis écrits" value={stand.rating_count ?? 0} />
       </div>
     </div>
   );
@@ -466,6 +544,7 @@ export default function AdminApp() {
   const { user, loading, signIn, signOut, error } = useVendorAuth(null);
   const [stands,     setStands]     = useState<StandDoc[]>([]);
   const [editing,    setEditing]    = useState<StandDoc | null>(null);
+  const [statsStand, setStatsStand] = useState<StandDoc | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [search,     setSearch]     = useState('');
   const [newId,      setNewId]      = useState<string | null>(null);
@@ -557,7 +636,7 @@ export default function AdminApp() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filtered.map(stand => (
-              <StandCard key={stand._id} stand={stand} onEdit={() => setEditing(stand)} />
+              <StandCard key={stand._id} stand={stand} onEdit={() => setEditing(stand)} onStats={() => setStatsStand(stand)} />
             ))}
           </div>
         )}
@@ -565,6 +644,7 @@ export default function AdminApp() {
 
       {editing    && <StandEditor stand={editing} onClose={() => setEditing(null)} onDeleted={() => setEditing(null)} />}
       {showCreate && <CreateStandModal onClose={() => setShowCreate(false)} onCreated={id => { setShowCreate(false); setNewId(id); }} />}
+      {statsStand && <ScreenStats standId={statsStand._id} standName={statsStand.name} onClose={() => setStatsStand(null)} />}
     </div>
   );
 }

@@ -20,6 +20,8 @@ interface HistoryEvent {
   wait_ms?: number;
   service_ms?: number;
   done_at?: Timestamp;
+  rating?: number;
+  feedback?: string;
 }
 
 function getStartDate(period: Period): Date {
@@ -47,7 +49,10 @@ function computeStats(events: HistoryEvent[]) {
   const serviceVals     = events.filter(e => (e.service_ms ?? 0) > 0).map(e => e.service_ms!);
   const avgWaitMin      = waitVals.length    ? Math.round(waitVals.reduce((s, v) => s + v, 0)    / waitVals.length    / 60000) : null;
   const avgServiceMin   = serviceVals.length ? Math.round(serviceVals.reduce((s, v) => s + v, 0) / serviceVals.length / 60000) : null;
-  return { total, served, leftWaiting, leftCheckin, timeoutCheckin, timeoutService, delayUsed, avgWaitMin, avgServiceMin };
+  const ratingVals      = events.filter(e => (e.rating ?? 0) > 0).map(e => e.rating!);
+  const ratingCount     = ratingVals.length;
+  const avgRating       = ratingCount > 0 ? Math.round(ratingVals.reduce((s, v) => s + v, 0) / ratingCount * 10) / 10 : null;
+  return { total, served, leftWaiting, leftCheckin, timeoutCheckin, timeoutService, delayUsed, avgWaitMin, avgServiceMin, ratingCount, avgRating };
 }
 
 type Stats = ReturnType<typeof computeStats>;
@@ -56,7 +61,7 @@ function pctOf(val: number | undefined | null, total: number): number {
   return total > 0 ? Math.round((val ?? 0) / total * 100) : 0;
 }
 
-function buildPrintHTML(stats: Stats, period: Period): string {
+function buildPrintHTML(stats: Stats, period: Period, standId: string): string {
   const periodLabel = PERIODS.find(p => p.key === period)?.label ?? period;
   const dateStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -67,7 +72,7 @@ function buildPrintHTML(stats: Stats, period: Period): string {
 <style>body{font-family:Inter,sans-serif;padding:40px;color:#11141a}h1{font-size:22px;margin:0 0 4px}.meta{color:#6b6f78;font-size:13px;margin-bottom:32px}.empty{font-size:15px;color:#6b6f78}</style>
 </head><body>
 <h1>Vaguéo — Statistiques</h1>
-<div class="meta">${periodLabel} · ${dateStr} · Stand ${STAND_ID}</div>
+<div class="meta">${periodLabel} · ${dateStr} · Stand ${standId}</div>
 <div class="empty">Aucun passage enregistré pour cette période.</div>
 </body></html>`;
   }
@@ -118,7 +123,7 @@ function buildPrintHTML(stats: Stats, period: Period): string {
 </style>
 </head><body>
 <h1>Vaguéo — Statistiques</h1>
-<div class="meta">${periodLabel} · ${dateStr} · Stand ${STAND_ID}</div>
+<div class="meta">${periodLabel} · ${dateStr} · Stand ${standId}</div>
 <div class="cards">
   <div class="card"><div class="val">${stats.total}</div><div class="lbl">Passages</div></div>
   <div class="card"><div class="val green">${s.served ?? 0}</div><div class="lbl">Servis</div></div>
@@ -129,25 +134,27 @@ function buildPrintHTML(stats: Stats, period: Period): string {
   <thead><tr><th>Sortie</th><th class="pct">%</th><th class="num">Nb</th></tr></thead>
   <tbody>${tableRows}${delayRow}</tbody>
 </table>
-<div class="footer">Vaguéo &nbsp;·&nbsp; Généré le ${new Date().toLocaleString('fr-FR')} &nbsp;·&nbsp; Stand ${STAND_ID}</div>
+<div class="footer">Vaguéo &nbsp;·&nbsp; Généré le ${new Date().toLocaleString('fr-FR')} &nbsp;·&nbsp; Stand ${standId}</div>
 </body></html>`;
 }
 
-function exportCSV(events: HistoryEvent[], period: Period) {
-  const headers = ['Date', 'Sortie', 'Attente (min)', 'Service (min)', 'Délai utilisé'];
+function exportCSV(events: HistoryEvent[], period: Period, standId: string) {
+  const headers = ['Date', 'Sortie', 'Attente (min)', 'Service (min)', 'Délai utilisé', 'Note', 'Commentaire'];
   const rows = events.map(e => [
     e.done_at?.toDate?.().toLocaleString('fr-FR') ?? '',
     e.exit_reason ?? '',
     e.wait_ms    != null ? String(Math.round(e.wait_ms    / 60000)) : '',
     e.service_ms != null ? String(Math.round(e.service_ms / 60000)) : '',
     e.delay_used ? 'oui' : 'non',
+    e.rating != null ? String(e.rating) : '',
+    e.feedback ?? '',
   ].map(v => `"${v}"`).join(','));
   const csv  = '﻿' + [headers.map(h => `"${h}"`).join(','), ...rows].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `vagueo-${STAND_ID}-${period}.csv`;
+  a.download = `vagueo-${standId}-${period}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -176,9 +183,12 @@ function PrintIcon() {
 
 interface ScreenStatsProps {
   onClose: () => void;
+  standId?: string;
+  standName?: string;
 }
 
-export default function ScreenStats({ onClose }: ScreenStatsProps) {
+export default function ScreenStats({ onClose, standId: standIdProp, standName }: ScreenStatsProps) {
+  const sid = standIdProp ?? STAND_ID;
   const p = PALETTE;
   const [period,  setPeriod]  = useState<Period>('today');
   const [events,  setEvents]  = useState<HistoryEvent[]>([]);
@@ -192,7 +202,7 @@ export default function ScreenStats({ onClose }: ScreenStatsProps) {
     setError(null);
     const start = Timestamp.fromDate(getStartDate(period));
     const q = query(
-      collection(db, 'stands', STAND_ID, 'history'),
+      collection(db, 'stands', sid, 'history'),
       where('done_at', '>=', start),
       orderBy('done_at', 'desc'),
     );
@@ -207,13 +217,14 @@ export default function ScreenStats({ onClose }: ScreenStatsProps) {
         setLoading(false);
       },
     );
-  }, [period]);
+  }, [period, sid]);
 
-  const stats = useMemo(() => computeStats(events), [events]);
-  const hd    = useMemo(() => hourlyData(events, period), [events, period]);
+  const stats     = useMemo(() => computeStats(events), [events]);
+  const hd        = useMemo(() => hourlyData(events, period), [events, period]);
+  const feedbacks = useMemo(() => events.filter(e => e.feedback?.trim()), [events]);
 
   const handlePrint = () => {
-    const html = buildPrintHTML(stats, period);
+    const html = buildPrintHTML(stats, period, sid);
     const w = window.open('', '_blank', 'width=800,height=640');
     if (!w) return;
     w.document.write(html);
@@ -238,13 +249,13 @@ export default function ScreenStats({ onClose }: ScreenStatsProps) {
         <div>
           <VagueoLogo size={16} color={p.ink} accent={p.wait} />
           <div style={{ fontSize: 11, color: p.mute, marginTop: 1, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            Statistiques
+            {standName ? standName : 'Statistiques'}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {!loading && !error && stats.total > 0 && (
             <>
-              <button onClick={() => exportCSV(events, period)} style={{
+              <button onClick={() => exportCSV(events, period, sid)} style={{
                 border: `1px solid ${p.line}`, borderRadius: 10,
                 padding: '0 12px', height: 34, cursor: 'pointer',
                 background: 'transparent', color: p.mute,
@@ -411,6 +422,42 @@ export default function ScreenStats({ onClose }: ScreenStatsProps) {
               <ExitRow label="Non-présents (timeout)"    value={stats.timeoutCheckin ?? 0}   total={stats.total} />
               <ExitRow label="Service écourté (timeout)" value={stats.timeoutService ?? 0}   total={stats.total} />
             </div>
+
+            {(stats.ratingCount ?? 0) > 0 && (
+              <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${p.line}` }}>
+                <div style={{ fontSize: 11, color: p.mute, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>
+                  Avis clients
+                </div>
+                <div style={{
+                  padding: '14px 16px', borderRadius: 16,
+                  border: `1px solid ${p.line}`,
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  marginBottom: 16,
+                }}>
+                  <div style={{ fontFamily: FONT_MONO, fontSize: 32, fontWeight: 700, letterSpacing: '-0.03em', color: p.call }}>
+                    {stats.avgRating?.toFixed(1)}
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', gap: 2, marginBottom: 3 }}>
+                      {[1,2,3,4,5].map(i => (
+                        <span key={i} style={{ fontSize: 15, color: i <= Math.round(stats.avgRating ?? 0) ? p.call : p.line }}>★</span>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 11, color: p.mute }}>
+                      {stats.ratingCount} avis · note sur 5
+                    </div>
+                  </div>
+                </div>
+                {feedbacks.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 11, color: p.mute, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+                      Commentaires
+                    </div>
+                    {feedbacks.map(e => <FeedbackRow key={e.id} event={e} />)}
+                  </>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -467,6 +514,32 @@ function StatCard({ value, label, sublabel, color, big, mono }: StatCardProps) {
       {sublabel && (
         <div style={{ fontSize: 9, color: p.mute, marginTop: 1, opacity: 0.7 }}>{sublabel}</div>
       )}
+    </div>
+  );
+}
+
+function FeedbackRow({ event }: { event: HistoryEvent }) {
+  const p = PALETTE;
+  const stars = event.rating ?? 0;
+  const date = event.done_at?.toDate?.();
+  const dateStr = date
+    ? date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : '';
+  return (
+    <div style={{ padding: '10px 0', borderBottom: `1px solid ${p.line}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+          <div style={{ display: 'flex', gap: 2 }}>
+            {[1,2,3,4,5].map(i => (
+              <span key={i} style={{ fontSize: 12, color: i <= stars ? p.call : p.line, lineHeight: 1 }}>★</span>
+            ))}
+          </div>
+          <div style={{ fontSize: 13, color: p.ink, lineHeight: 1.5, fontStyle: 'italic' }}>
+            "{event.feedback}"
+          </div>
+        </div>
+        <div style={{ fontSize: 10, color: p.mute, flexShrink: 0, marginTop: 1 }}>{dateStr}</div>
+      </div>
     </div>
   );
 }
