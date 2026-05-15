@@ -39,6 +39,7 @@ jobs:
         uses: vercel/repository-dispatch/actions/status@v1
         with:
           name: Vercel - vagueo: lint
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     runs-on: ubuntu-latest
