@@ -24,6 +24,24 @@ import ModalRating      from '../components/ModalRating.tsx';
 export default function ClientApp() {
   const [stand]                          = useStand();
   const [client, step, derived, actions] = useClientSession(stand);
+
+  if (!STAND_ID) {
+    return (
+      <div style={{
+        width: '100%', height: '100%',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        background: '#fbfaf7', fontFamily: FONT,
+        padding: '0 32px', gap: 12, textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 32, opacity: 0.3 }}>〜</div>
+        <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.01em', color: '#1a1a1a' }}>Lien invalide</div>
+        <div style={{ fontSize: 13, color: '#a0988a', lineHeight: 1.6, maxWidth: 260 }}>
+          Ce lien ne correspond à aucun stand.<br />Scannez à nouveau le QR code du stand.
+        </div>
+      </div>
+    );
+  }
   const clock                            = useClock();
   const { requestPermission, notify }    = usePush();
   const prevStep = useRef<string | null>(null);

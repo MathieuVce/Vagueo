@@ -2,10 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useStand }          from '../hooks/useStand.ts';
 import { useVendorAuth }     from '../hooks/useVendorAuth.ts';
 import { useClock }          from '../hooks/useClock.ts';
-import { useQueueCounts }    from '../hooks/useQueueCounts.ts';
-import { useDevHelpers }     from '../hooks/useDevHelpers.ts';
+import { useQueueCounts }         from '../hooks/useQueueCounts.ts';
+import { useDevHelpers }          from '../hooks/useDevHelpers.ts';
+import { useVendorStandLookup }   from '../hooks/useVendorStandLookup.ts';
 import { waveIntervalMs, PALETTE, FONT, STAND_ID } from '../tokens.ts';
 import ScreenVendorLogin  from '../screens/ScreenVendorLogin.tsx';
+import ScreenVendorCreate from '../screens/ScreenVendorCreate.tsx';
 import ScreenVendor       from '../screens/ScreenVendor.tsx';
 import ScreenVendorSetup  from '../screens/ScreenVendorSetup.tsx';
 import ScreenStats        from '../screens/ScreenStats.tsx';
@@ -25,6 +27,7 @@ export default function VendorApp() {
   const [signingIn, setSigningIn] = useState(false);
 
   const { presentCount, waitingCount } = useQueueCounts(isAuthorized);
+  const standLookup = useVendorStandLookup(user);
   const { devAddClient, devRemoveClient, devClearQueue, devResetStore } = useDevHelpers();
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -67,20 +70,41 @@ export default function VendorApp() {
 
   const p = PALETTE;
 
-  // ─── Loading ──────────────────────────────────────────────────
-  if (authLoading || !stand) {
+  const loadingSpinner = (
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: p.paper }}>
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'oklch(0.46 0.13 250)', animation: 'vagueoPulse 1s ease-in-out infinite' }} />
+    </div>
+  );
+
+  // ─── No stand ID in URL ───────────────────────────────────────
+  if (!STAND_ID) {
+    if (authLoading || standLookup === 'loading' || standLookup === 'redirecting') return loadingSpinner;
+    if (!user || user.isAnonymous) {
+      return (
+        <ScreenVendorLogin
+          standName={null}
+          onSignIn={handleSignIn}
+          error={authError}
+          loading={signingIn}
+        />
+      );
+    }
     return (
-      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: p.paper }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'oklch(0.46 0.13 250)', animation: 'vagueoPulse 1s ease-in-out infinite' }} />
-      </div>
+      <ScreenVendorCreate
+        user={user}
+        onCreated={(id) => window.location.replace(`/vendor?stand=${id}`)}
+      />
     );
   }
+
+  // ─── Loading ──────────────────────────────────────────────────
+  if (authLoading || !stand) return loadingSpinner;
 
   // ─── Not logged in ────────────────────────────────────────────
   if (!user || user.isAnonymous) {
     return (
       <ScreenVendorLogin
-        standName={null}
+        standName={stand.name || null}
         onSignIn={handleSignIn}
         error={authError}
         loading={signingIn}

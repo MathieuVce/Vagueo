@@ -50,8 +50,8 @@ export function useClientSession(
   const [authReady,     setReady]         = useState(false);
   const [positionAhead, setPositionAhead] = useState(0);
 
-  const standRef   = doc(db, 'stands', STAND_ID);
-  const historyCol = collection(db, 'stands', STAND_ID, 'history');
+  const standRef   = doc(db, 'stands', STAND_ID || '__no_stand__');
+  const historyCol = collection(db, 'stands', STAND_ID || '__no_stand__', 'history');
 
   // ─── Anonymous auth ────────────────────────────────────────────
   useEffect(() => {

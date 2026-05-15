@@ -51,9 +51,10 @@ interface UseStandOptions {
 export function useStand(options?: UseStandOptions): [Stand | null, StandActions] {
   const autoCreate = options?.autoCreate ?? false;
   const [stand, setStand] = useState<Stand | null>(null);
-  const standRef = doc(db, 'stands', STAND_ID);
+  const standRef = doc(db, 'stands', STAND_ID || '__no_stand__');
 
   useEffect(() => {
+    if (!STAND_ID) return;
     const unsub = onSnapshot(standRef, async (snap) => {
       if (snap.exists()) {
         const data = snap.data() as Omit<Stand, 'secure_color'>;

@@ -46,9 +46,9 @@ export function waveIntervalMs(minPerPerson: number): number {
 }
 
 // ─── Queue ────────────────────────────────────────────────────
-// Read from ?stand= in the URL — falls back to 'stand_01'.
+// Read from ?stand= in the URL. Empty string when absent (invalid/create flow).
 // Each QR code = one URL = one isolated stand.
-export const STAND_ID  = new URLSearchParams(window.location.search).get('stand') ?? 'stand_01';
+export const STAND_ID  = new URLSearchParams(window.location.search).get('stand') ?? '';
 export const WAVE_SIZE = 5;   // clients per wave batch
 
 // ─── Timeouts ─────────────────────────────────────────────────
