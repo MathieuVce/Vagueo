@@ -9,6 +9,7 @@ import { useVendorAuth } from '../hooks/useVendorAuth.ts';
 import {
   SECURE_COLORS, FLOW_RATE_LABELS,
   FLOW_SLOW_DEFAULT, FLOW_SPRINT_DEFAULT, calcMinPerPerson, FLOW_RATE_DEFAULT,
+  CALL_AHEAD_MIN_DEFAULT,
 } from '../tokens.ts';
 import { COLOR, FONT, TEXT, SIZE, SHADOW } from '../ui/design.ts';
 import { Button, Field, NumberField, Toggle, Segment, Drawer, DrawerBody, DrawerHeader, useToast, Label } from '../ui/index.ts';
@@ -101,6 +102,7 @@ function StandEditor({ stand, onClose, onDeleted }: { stand: StandDoc; onClose: 
   const [maxQueueSize, setMaxQueueSize] = useState<number>(stand.max_queue_size ?? 30);
   const [limitDelay,   setLimitDelay]   = useState(stand.max_delayed  != null);
   const [maxDelayed,   setMaxDelayed]   = useState<number>(stand.max_delayed ?? 5);
+  const [callAheadMin, setCallAheadMin] = useState<number>(stand.call_ahead_min ?? CALL_AHEAD_MIN_DEFAULT);
   const [isOpen,       setIsOpen]       = useState(stand.is_open      ?? false);
   const [isPaused,     setIsPaused]     = useState(stand.is_paused    ?? false);
   const [saving,       setSaving]       = useState(false);
@@ -147,6 +149,7 @@ function StandEditor({ stand, onClose, onDeleted }: { stand: StandDoc; onClose: 
         min_per_person: calcMinPerPerson(stand.flow_rate ?? FLOW_RATE_DEFAULT, slow, sprint),
         max_queue_size: limitQueue ? maxQueueSize : null,
         max_delayed:    limitDelay ? maxDelayed   : null,
+        call_ahead_min: callAheadMin,
       };
       if (!isClaimed) update.vendor_email = vendorEmail.trim().toLowerCase();
       await updateDoc(doc(db, 'stands', stand._id), update);
@@ -298,6 +301,17 @@ function StandEditor({ stand, onClose, onDeleted }: { stand: StandDoc; onClose: 
             {limitDelay && <div style={{ marginTop: 8 }}><NumberField value={maxDelayed} unit="délais max" onChange={v => setMaxDelayed(Math.max(0, v))} /></div>}
           </div>
 
+          {/* Call-ahead */}
+          <div>
+            <Label>Avance de notification</Label>
+            <div style={{ marginTop: 8 }}>
+              <NumberField value={callAheadMin} unit="min avant leur tour" onChange={v => setCallAheadMin(Math.max(2, Math.min(30, v)))} min={2} max={30} />
+            </div>
+            <div style={{ ...TEXT.small, color: COLOR.mute, marginTop: 6, lineHeight: 1.5 }}>
+              Temps estimé restant avant leur tour auquel les clients reçoivent la notification pour venir.
+            </div>
+          </div>
+
           {/* Avis */}
           {recentRatings.length > 0 && (() => {
             const avgR = recentRatings.reduce((s, e) => s + (e.rating ?? 0), 0) / recentRatings.length;
@@ -382,6 +396,7 @@ function CreateStandModal({ onClose, onCreated }: { onClose: () => void; onCreat
   const [maxQueueSize, setMaxQueueSize] = useState(30);
   const [limitDelay,   setLimitDelay]   = useState(false);
   const [maxDelayed,   setMaxDelayed]   = useState(5);
+  const [callAheadMin, setCallAheadMin] = useState(CALL_AHEAD_MIN_DEFAULT);
   const [saving,       setSaving]       = useState(false);
 
   const canCreate = name.trim().length > 0;
@@ -399,6 +414,7 @@ function CreateStandModal({ onClose, onCreated }: { onClose: () => void; onCreat
       min_per_person: calcMinPerPerson(FLOW_RATE_DEFAULT, slow, sprint),
       max_queue_size: limitQueue ? maxQueueSize : null,
       max_delayed:    limitDelay ? maxDelayed   : null,
+      call_ahead_min: callAheadMin,
       status: 'active',
       createdAt: serverTimestamp(),
     });
@@ -445,6 +461,16 @@ function CreateStandModal({ onClose, onCreated }: { onClose: () => void; onCreat
           <Label>Délais simultanés</Label>
           <Segment style={{ marginTop: 8 }} value={limitDelay} onChange={setLimitDelay} options={[{ value: false, label: 'Illimité' }, { value: true, label: 'Limité' }]} />
           {limitDelay && <div style={{ marginTop: 8 }}><NumberField value={maxDelayed} unit="délais max" onChange={v => setMaxDelayed(Math.max(0, v))} /></div>}
+        </div>
+
+        <div>
+          <Label>Avance de notification</Label>
+          <div style={{ marginTop: 8 }}>
+            <NumberField value={callAheadMin} unit="min avant leur tour" onChange={v => setCallAheadMin(Math.max(2, Math.min(30, v)))} min={2} max={30} />
+          </div>
+          <div style={{ ...TEXT.small, color: COLOR.mute, marginTop: 6, lineHeight: 1.5 }}>
+            Temps estimé restant avant leur tour auquel les clients reçoivent la notification pour venir.
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 10 }}>

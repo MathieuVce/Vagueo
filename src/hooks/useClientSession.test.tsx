@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useClientSession } from './useClientSession';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
-import { onSnapshot, runTransaction, updateDoc, getDocs, writeBatch } from 'firebase/firestore';
+import { onSnapshot, runTransaction, updateDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 
 describe('useClientSession', () => {
   const mockStand: any = { is_open: true, is_paused: false, min_per_person: 2 };
@@ -123,24 +123,23 @@ describe('useClientSession', () => {
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ claimed_at: expect.anything() }));
   });
 
-  it('done calls updateDoc with status done', async () => {
+  it('done deletes the queue doc', async () => {
     const result = await boot();
     await act(async () => { await result.current[3].done('completed'); });
-    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { status: 'done' });
+    expect(deleteDoc).toHaveBeenCalled();
   });
 
-  it('restart calls updateDoc and clears client', async () => {
+  it('restart deletes the queue doc', async () => {
     const result = await boot();
     await act(async () => { fireClientSnapshot(result, { status: 'waiting', queue_position: 3 }); });
     await act(async () => { await result.current[3].restart(); });
-    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { status: 'done' });
-    expect(result.current[0]).toBeNull();
+    expect(deleteDoc).toHaveBeenCalled();
   });
 
-  it('leave calls updateDoc with status done', async () => {
+  it('leave deletes the queue doc', async () => {
     const result = await boot();
     await act(async () => { await result.current[3].leave(); });
-    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { status: 'done' });
+    expect(deleteDoc).toHaveBeenCalled();
   });
 
   it('requestDelay calls updateDoc with new position', async () => {

@@ -153,7 +153,7 @@ describe('ClientApp', () => {
       'validation', mockDerived, mockActions,
     ]);
     await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(541_000); });
+    await act(async () => { vi.advanceTimersByTime(901_000); });
     expect(screen.getByText(/Toujours en cours/i)).toBeInTheDocument();
   });
 
@@ -164,7 +164,7 @@ describe('ClientApp', () => {
       'validation', mockDerived, mockActions,
     ]);
     await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(541_000); });
+    await act(async () => { vi.advanceTimersByTime(901_000); });
     fireEvent.click(screen.getByText(/Prolonger/i));
     expect(mockActions.extend).toHaveBeenCalled();
   });
@@ -212,7 +212,7 @@ describe('ClientApp', () => {
       'validation', mockDerived, mockActions,
     ]);
     await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(541_000); });
+    await act(async () => { vi.advanceTimersByTime(901_000); });
     fireEvent.click(screen.getByText(/J'ai fini, merci/));
     expect(screen.getByText(/Votre avis compte/i)).toBeInTheDocument();
   });
