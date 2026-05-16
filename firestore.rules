@@ -10,15 +10,25 @@ service cloud.firestore {
       // Création : tout utilisateur authentifié (autoCreate vendeur, admin)
       allow create: if request.auth != null;
 
-      // Modification : vendeur propriétaire, utilisateur Google non-anonyme (admin),
-      // ou client anonyme limité aux champs qu'il peut légitimement écrire :
-      //   queue_counter (join), rating_count/sum (avis), et les champs d'apprentissage
-      //   EMA mis à jour à chaque service complété.
+      // Modification :
+      //   1. Vendeur propriétaire (vendor_uid correspond)
+      //   2. Google non-anonyme (admin) : peut tout faire SAUF écrire vendor_uid
+      //      sur un stand déjà claimed (prévient le vol de stand).
+      //      Exception : deleteField() sur vendor_uid est autorisé (déliaison admin).
+      //   3. Client anonyme : champs EMA/file uniquement
       allow update: if request.auth != null && (
+        // Propriétaire du stand
         request.auth.uid == resource.data.vendor_uid
         ||
-        request.auth.token.firebase.sign_in_provider != 'anonymous'
+        // Google non-anonyme : modifications libres sauf remplacement de vendor_uid sur stand claimed
+        (request.auth.token.firebase.sign_in_provider != 'anonymous'
+         && (
+           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['vendor_uid'])
+           || resource.data.get('vendor_uid', '') == ''
+           || !('vendor_uid' in request.resource.data)
+         ))
         ||
+        // Client anonyme : queue_counter, notes, EMA
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'queue_counter',
           'rating_count', 'rating_sum',

@@ -128,7 +128,7 @@ describe('useStand', () => {
         name: ' Mon Stand ', logoUrl: 'https://img.com/logo.png',
         address: 'B12 ', isOpen: true,
         flowSlow: 5, flowSprint: 1,
-        maxQueueSize: 20, maxDelayed: 3,
+        maxQueueSize: 20, maxDelayed: 3, callAheadMin: 8,
       });
     });
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
@@ -146,7 +146,7 @@ describe('useStand', () => {
       await result.current[1].configure({
         name: 'Stand', logoUrl: '', address: '', isOpen: false,
         flowSlow: 5, flowSprint: 1,
-        maxQueueSize: null, maxDelayed: null,
+        maxQueueSize: null, maxDelayed: null, callAheadMin: 8,
       });
     });
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
@@ -161,7 +161,7 @@ describe('useStand', () => {
       await result.current[1].configure({
         name: 'Stand', logoUrl: '', address: '', isOpen: false,
         flowSlow: 0, flowSprint: 0,
-        maxQueueSize: null, maxDelayed: null,
+        maxQueueSize: null, maxDelayed: null, callAheadMin: 8,
       });
     });
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({

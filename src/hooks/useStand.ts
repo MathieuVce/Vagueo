@@ -41,7 +41,7 @@ interface StandActions {
   togglePause: () => Promise<void>;
   toggleOpen: () => Promise<void>;
   configure: (params: ConfigureParams) => Promise<void>;
-  claimStand: (uid: string) => Promise<void>;
+  claimStand: (uid: string, email: string | null) => Promise<void>;
 }
 
 interface UseStandOptions {

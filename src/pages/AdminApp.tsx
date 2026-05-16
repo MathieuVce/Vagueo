@@ -399,7 +399,7 @@ function CreateStandModal({ onClose, onCreated }: { onClose: () => void; onCreat
   const [callAheadMin, setCallAheadMin] = useState(CALL_AHEAD_MIN_DEFAULT);
   const [saving,       setSaving]       = useState(false);
 
-  const canCreate = name.trim().length > 0;
+  const canCreate = name.trim().length > 0 && vendorEmail.trim().length > 0;
 
   async function handleCreate() {
     if (!canCreate) return;
@@ -435,7 +435,7 @@ function CreateStandModal({ onClose, onCreated }: { onClose: () => void; onCreat
         <div>
           <Label>Compte vendeur</Label>
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <Field label="Email Google du vendeur" value={vendorEmail} onChange={setVendorEmail} placeholder="vendeur@gmail.com" type="email" />
+            <Field label="Email Google du vendeur *" value={vendorEmail} onChange={setVendorEmail} placeholder="vendeur@gmail.com" type="email" />
             <div style={{ ...TEXT.small, color: COLOR.mute, lineHeight: 1.5 }}>
               Premier login Google avec cet email sur <span style={{ fontFamily: FONT.mono }}>/vendor?stand=&lt;id&gt;</span> → liaison automatique.
             </div>
