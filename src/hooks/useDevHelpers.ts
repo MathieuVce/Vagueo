@@ -1,6 +1,6 @@
 import {
   getDocs, collection, query, where, writeBatch,
-  updateDoc, deleteDoc, doc, runTransaction, serverTimestamp, limit,
+  deleteDoc, doc, runTransaction, serverTimestamp, limit,
 } from 'firebase/firestore';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 import { db, auth } from '../firebase.ts';
@@ -27,7 +27,19 @@ export function useDevHelpers() {
   }
 
   async function devRemoveClient() {
-    const qSnap = await getDocs(
+    // Prefer removing a _dev doc first; fall back to any waiting entry.
+    const devSnap = await getDocs(
+      query(
+        collection(db, 'queue'),
+        where('stand_id', '==', STAND_ID),
+        where('_dev', '==', true),
+        where('status', 'in', ['waiting', 'orange', 'claimed']),
+        limit(1),
+      )
+    );
+    if (!devSnap.empty) { await deleteDoc(devSnap.docs[0].ref); return; }
+
+    const anySnap = await getDocs(
       query(
         collection(db, 'queue'),
         where('stand_id', '==', STAND_ID),
@@ -35,7 +47,7 @@ export function useDevHelpers() {
         limit(1),
       )
     );
-    if (!qSnap.empty) await updateDoc(qSnap.docs[0].ref, { status: 'done' });
+    if (!anySnap.empty) await deleteDoc(anySnap.docs[0].ref);
   }
 
   async function devClearQueue() {
@@ -48,7 +60,7 @@ export function useDevHelpers() {
     );
     if (qSnap.empty) return;
     const batch = writeBatch(db);
-    qSnap.docs.forEach((d) => batch.update(d.ref, { status: 'done' }));
+    qSnap.docs.forEach((d) => batch.delete(d.ref));
     await batch.commit();
   }
 

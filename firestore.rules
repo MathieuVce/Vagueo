@@ -11,13 +11,19 @@ service cloud.firestore {
       allow create: if request.auth != null;
 
       // Modification : vendeur propriétaire, utilisateur Google non-anonyme (admin),
-      // ou client anonyme qui incrémente seulement queue_counter.
+      // ou client anonyme limité aux champs qu'il peut légitimement écrire :
+      //   queue_counter (join), rating_count/sum (avis), et les champs d'apprentissage
+      //   EMA mis à jour à chaque service complété.
       allow update: if request.auth != null && (
         request.auth.uid == resource.data.vendor_uid
         ||
         request.auth.token.firebase.sign_in_provider != 'anonymous'
         ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['queue_counter', 'rating_count', 'rating_sum'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'queue_counter',
+          'rating_count', 'rating_sum',
+          'service_ms_ema', 'service_count', 'min_per_person'
+        ])
       );
 
       // Suppression : vendeur propriétaire ou utilisateur Google (admin)
@@ -56,9 +62,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/stands/$(resource.data.stand_id)).data.vendor_uid == request.auth.uid
       );
 
-      // Suppression : utilisateur Google uniquement (vendeur/admin — outils dev)
-      allow delete: if request.auth != null
-        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      // Suppression : le client supprime son propre doc (leave/done),
+      // ou un compte Google (vendeur/admin — outils dev)
+      allow delete: if request.auth != null && (
+        request.auth.uid == userId
+        || request.auth.token.firebase.sign_in_provider != 'anonymous'
+      );
     }
   }
 }
