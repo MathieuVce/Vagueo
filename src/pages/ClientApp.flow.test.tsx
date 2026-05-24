@@ -116,7 +116,7 @@ describe('ClientApp — flux utilisateur', () => {
       'validation', baseDerived, actions,
     ]);
     await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(541_000); });
+    await act(async () => { vi.advanceTimersByTime(901_000); });
 
     expect(screen.getByText(/Toujours en cours/i)).toBeInTheDocument();
     fireEvent.click(screen.getByText(/J'ai fini, merci/));

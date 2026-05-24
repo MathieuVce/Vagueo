@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useDevHelpers } from './useDevHelpers';
-import { runTransaction, getDocs, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
+import { runTransaction, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 
 describe('useDevHelpers', () => {
   beforeEach(() => {
@@ -16,7 +16,7 @@ describe('useDevHelpers', () => {
     expect(runTransaction).toHaveBeenCalled();
   });
 
-  it('devRemoveClient updates a doc status to done', async () => {
+  it('devRemoveClient deletes the first matching doc', async () => {
     (getDocs as any).mockResolvedValue({
       empty: false,
       docs: [{ ref: 'mockRef' }],
@@ -26,10 +26,10 @@ describe('useDevHelpers', () => {
     await act(async () => {
       await result.current.devRemoveClient();
     });
-    expect(updateDoc).toHaveBeenCalledWith('mockRef', { status: 'done' });
+    expect(deleteDoc).toHaveBeenCalledWith('mockRef');
   });
 
-  it('devClearQueue uses batch to update statuses', async () => {
+  it('devClearQueue deletes all active docs via batch', async () => {
     const mockBatch = writeBatch(vi.fn() as any);
     (writeBatch as any).mockReturnValue(mockBatch);
 
@@ -42,7 +42,7 @@ describe('useDevHelpers', () => {
     await act(async () => {
       await result.current.devClearQueue();
     });
-    expect(mockBatch.update).toHaveBeenCalledTimes(2);
+    expect(mockBatch.delete).toHaveBeenCalledTimes(2);
     expect(mockBatch.commit).toHaveBeenCalled();
   });
 

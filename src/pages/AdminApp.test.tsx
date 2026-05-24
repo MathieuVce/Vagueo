@@ -158,17 +158,26 @@ describe('AdminApp', () => {
     expect(screen.getByRole('button', { name: /Créer le stand/i })).toBeDisabled();
   });
 
-  it('create button is enabled after typing a name', () => {
+  it('create button is enabled after typing a name and email', () => {
     render(<AdminApp />);
     fireEvent.click(screen.getByRole('button', { name: /\+ Nouveau stand/i }));
     fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), { target: { value: 'Mon Stand' } });
+    fireEvent.change(screen.getByPlaceholderText(/vendeur@gmail\.com/i), { target: { value: 'v@test.com' } });
     expect(screen.getByRole('button', { name: /Créer le stand/i })).not.toBeDisabled();
+  });
+
+  it('create button stays disabled with name but no email', () => {
+    render(<AdminApp />);
+    fireEvent.click(screen.getByRole('button', { name: /\+ Nouveau stand/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), { target: { value: 'Mon Stand' } });
+    expect(screen.getByRole('button', { name: /Créer le stand/i })).toBeDisabled();
   });
 
   it('calls addDoc and shows toast after creating stand', async () => {
     render(<AdminApp />);
     fireEvent.click(screen.getByRole('button', { name: /\+ Nouveau stand/i }));
     fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), { target: { value: 'Nouveau' } });
+    fireEvent.change(screen.getByPlaceholderText(/vendeur@gmail\.com/i), { target: { value: 'v@test.com' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Créer le stand/i })); });
     expect(screen.getByText('mock-id')).toBeInTheDocument();
   });
@@ -177,6 +186,7 @@ describe('AdminApp', () => {
     render(<AdminApp />);
     fireEvent.click(screen.getByRole('button', { name: /\+ Nouveau stand/i }));
     fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), { target: { value: 'Nouveau' } });
+    fireEvent.change(screen.getByPlaceholderText(/vendeur@gmail\.com/i), { target: { value: 'v@test.com' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Créer le stand/i })); });
     fireEvent.click(screen.getByRole('button', { name: '×' }));
     expect(screen.queryByText('mock-id')).not.toBeInTheDocument();

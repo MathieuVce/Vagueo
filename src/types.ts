@@ -21,6 +21,9 @@ export interface Stand {
   rating_count?: number;
   rating_sum?: number;
   status?: 'active' | 'pending_approval';
+  call_ahead_min?: number;   // minutes before estimated turn to trigger orange (default 8)
+  service_ms_ema?: number;   // exponential moving average of actual service durations
+  service_count?: number;    // number of completed services (weights the EMA blend)
 }
 
 export type QueueStatus = 'waiting' | 'orange' | 'claimed' | 'done';

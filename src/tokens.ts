@@ -49,7 +49,16 @@ export function waveIntervalMs(minPerPerson: number): number {
 // Read from ?stand= in the URL. Empty string when absent (invalid/create flow).
 // Each QR code = one URL = one isolated stand.
 export const STAND_ID  = new URLSearchParams(window.location.search).get('stand') ?? '';
-export const WAVE_SIZE = 5;   // clients per wave batch
+export const WAVE_SIZE = 5;   // positions added when a client requests a delay
+
+// ─── Adaptive calling ─────────────────────────────────────────
+// Orange triggered when estimatedWait ≤ call_ahead_min × CALL_BUFFER_FACTOR.
+// The buffer accounts for travel time + non-app users in the physical queue.
+export const CALL_AHEAD_MIN_DEFAULT = 8;    // minutes, overridden per stand
+export const CALL_BUFFER_FACTOR     = 1.3;  // 30 % buffer on top of the threshold
+
+// EMA smoothing factor for service time learning.
+export const EMA_ALPHA = 0.2;
 
 // ─── Timeouts ─────────────────────────────────────────────────
 // Orange: delay before showing the modal when the client hasn't confirmed presence
@@ -57,9 +66,10 @@ export const ORANGE_PROMPT_MS   = 3 * 60_000;  // 3 min after being called
 export const ORANGE_RESPONSE_MS = 2 * 60_000;  // 2 min to respond to the modal
 
 // Green: delay before asking whether the client is still being served.
-// Floor at 5 min, then 3× average time per person (buffer for the physical queue).
+// Floor at 10 min, then 5× average time per person — leaves time for the
+// physical queue + order retrieval before nagging the client.
 export function calcServicePromptMs(minPerPerson = 3): number {
-  return Math.max(5, minPerPerson * 3) * 60_000;
+  return Math.max(10, minPerPerson * 5) * 60_000;
 }
 export const SERVICE_RESPONSE_MS = 2 * 60_000;
 

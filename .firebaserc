@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "vagueo-dev",
+    "dev": "vagueo-dev",
+    "prod": "vagueo-c773c"
+  }
+}

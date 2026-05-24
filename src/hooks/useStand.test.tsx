@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useStand } from './useStand';
-import { onSnapshot, updateDoc, setDoc, increment } from 'firebase/firestore';
+import { onSnapshot, updateDoc, setDoc, increment, deleteField } from 'firebase/firestore';
 
 describe('useStand', () => {
   // Boots the hook, optionally fires a snapshot with stand data
@@ -119,6 +119,16 @@ describe('useStand', () => {
     expect(updateDoc).not.toHaveBeenCalled();
   });
 
+  it('setFlowRate resets EMA: deleteField sur service_ms_ema et service_count à 0', async () => {
+    const result = boot({ flow_rate: 3, flow_slow: 5, flow_sprint: 1, service_ms_ema: 120_000, service_count: 10 });
+    await act(async () => { await result.current[1].setFlowRate(1); });
+    expect(deleteField).toHaveBeenCalled();
+    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      service_count: 0,
+      flow_rate: 4,
+    }));
+  });
+
   // ─── configure ────────────────────────────────────────────────
 
   it('configure calls updateDoc with all params (trimming names)', async () => {
@@ -128,7 +138,7 @@ describe('useStand', () => {
         name: ' Mon Stand ', logoUrl: 'https://img.com/logo.png',
         address: 'B12 ', isOpen: true,
         flowSlow: 5, flowSprint: 1,
-        maxQueueSize: 20, maxDelayed: 3,
+        maxQueueSize: 20, maxDelayed: 3, callAheadMin: 8,
       });
     });
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
@@ -146,7 +156,7 @@ describe('useStand', () => {
       await result.current[1].configure({
         name: 'Stand', logoUrl: '', address: '', isOpen: false,
         flowSlow: 5, flowSprint: 1,
-        maxQueueSize: null, maxDelayed: null,
+        maxQueueSize: null, maxDelayed: null, callAheadMin: 8,
       });
     });
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
@@ -161,7 +171,7 @@ describe('useStand', () => {
       await result.current[1].configure({
         name: 'Stand', logoUrl: '', address: '', isOpen: false,
         flowSlow: 0, flowSprint: 0,
-        maxQueueSize: null, maxDelayed: null,
+        maxQueueSize: null, maxDelayed: null, callAheadMin: 8,
       });
     });
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({

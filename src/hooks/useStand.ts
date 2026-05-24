@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   doc, onSnapshot, updateDoc, setDoc,
-  serverTimestamp, increment,
+  serverTimestamp, increment, deleteField,
 } from 'firebase/firestore';
 import { db } from '../firebase.ts';
 import type { Stand } from '../types.ts';
@@ -32,6 +32,7 @@ export interface ConfigureParams {
   flowSprint: number;
   maxQueueSize: number | null;
   maxDelayed: number | null;
+  callAheadMin: number;
 }
 
 interface StandActions {
@@ -40,7 +41,7 @@ interface StandActions {
   togglePause: () => Promise<void>;
   toggleOpen: () => Promise<void>;
   configure: (params: ConfigureParams) => Promise<void>;
-  claimStand: (uid: string) => Promise<void>;
+  claimStand: (uid: string, email: string | null) => Promise<void>;
 }
 
 interface UseStandOptions {
@@ -74,9 +75,12 @@ export function useStand(options?: UseStandOptions): [Stand | null, StandActions
   const setFlowRate = useCallback(async (delta: number) => {
     if (!stand) return;
     const next = Math.min(5, Math.max(1, (stand.flow_rate ?? FLOW_RATE_DEFAULT) + delta));
+    // Reset EMA so the slider base takes full immediate effect; learning resumes from scratch.
     await updateDoc(standRef, {
-      flow_rate:      next,
-      min_per_person: calcMinPerPerson(next, stand.flow_slow, stand.flow_sprint),
+      flow_rate:       next,
+      min_per_person:  calcMinPerPerson(next, stand.flow_slow, stand.flow_sprint),
+      service_ms_ema:  deleteField(),
+      service_count:   0,
     });
   }, [stand]);
 
@@ -91,7 +95,7 @@ export function useStand(options?: UseStandOptions): [Stand | null, StandActions
   }, [stand]);
 
   // First-time setup or settings edit
-  const configure = useCallback(async ({ name, logoUrl, address, isOpen, flowSlow, flowSprint, maxQueueSize, maxDelayed }: ConfigureParams) => {
+  const configure = useCallback(async ({ name, logoUrl, address, isOpen, flowSlow, flowSprint, maxQueueSize, maxDelayed, callAheadMin }: ConfigureParams) => {
     const slow   = Number(flowSlow)   || FLOW_SLOW_DEFAULT;
     const sprint = Number(flowSprint) || FLOW_SPRINT_DEFAULT;
     const rate   = stand?.flow_rate ?? FLOW_RATE_DEFAULT;
@@ -105,6 +109,7 @@ export function useStand(options?: UseStandOptions): [Stand | null, StandActions
       min_per_person:  calcMinPerPerson(rate, slow, sprint),
       max_queue_size:  maxQueueSize,
       max_delayed:     maxDelayed,
+      call_ahead_min:  callAheadMin,
     });
   }, [stand]);
 

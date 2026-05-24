@@ -3,7 +3,7 @@ import { useState } from 'react';
 import VagueoLogo from '../components/VagueoLogo.tsx';
 import { COLOR, FONT, TEXT, SIZE, ANIM } from '../ui/design.ts';
 import { Button, Field, NumberField, Toggle, Segment, Label } from '../ui/index.ts';
-import { FLOW_SLOW_DEFAULT, FLOW_SPRINT_DEFAULT, FLOW_RATE_LABELS, calcMinPerPerson } from '../tokens.ts';
+import { FLOW_SLOW_DEFAULT, FLOW_SPRINT_DEFAULT, FLOW_RATE_LABELS, calcMinPerPerson, CALL_AHEAD_MIN_DEFAULT } from '../tokens.ts';
 import type { Stand } from '../types.ts';
 import type { ConfigureParams } from '../hooks/useStand.ts';
 
@@ -112,6 +112,7 @@ export default function ScreenVendorSetup({ stand, onSave, isEditing = false }: 
   const [maxQueueSize, setMaxQueueSize] = useState<number>(stand.max_queue_size ?? 30);
   const [limitDelay,   setLimitDelay]   = useState(stand.max_delayed != null);
   const [maxDelayed,   setMaxDelayed]   = useState<number>(stand.max_delayed ?? 5);
+  const [callAheadMin, setCallAheadMin] = useState<number>(stand.call_ahead_min ?? CALL_AHEAD_MIN_DEFAULT);
   const [saving,       setSaving]       = useState(false);
   const [imgError,     setImgError]     = useState(false);
 
@@ -132,6 +133,7 @@ export default function ScreenVendorSetup({ stand, onSave, isEditing = false }: 
       name, logoUrl, address, isOpen, flowSlow, flowSprint,
       maxQueueSize: limitQueue ? maxQueueSize : null,
       maxDelayed:   limitDelay ? maxDelayed   : null,
+      callAheadMin,
     });
     setSaving(false);
   }
@@ -296,6 +298,22 @@ export default function ScreenVendorSetup({ stand, onSave, isEditing = false }: 
               />
             </div>
           )}
+        </div>
+
+        {/* Call-ahead window */}
+        <div style={s.fieldGapSm}>
+          <Label>Avance de notification</Label>
+          <div style={s.flowHint}>
+            Temps estimé restant avant leur tour auquel les clients sont appelés à venir.
+          </div>
+          <div style={s.numberWrap}>
+            <NumberField
+              value={callAheadMin}
+              onChange={(v) => setCallAheadMin(Math.max(2, Math.min(30, v)))}
+              min={2} max={30} step={1}
+              unit="min avant leur tour"
+            />
+          </div>
         </div>
 
         {/* is_open toggle */}

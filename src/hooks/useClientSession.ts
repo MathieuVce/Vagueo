@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import {
-  doc, onSnapshot, updateDoc,
+  doc, onSnapshot, updateDoc, deleteDoc,
   serverTimestamp, collection, query, where,
   deleteField, runTransaction, getDocs, writeBatch, increment,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase.ts';
-import { WAVE_SIZE, STAND_ID } from '../tokens.ts';
+import {
+  WAVE_SIZE, STAND_ID,
+  CALL_AHEAD_MIN_DEFAULT, CALL_BUFFER_FACTOR, EMA_ALPHA,
+  FLOW_RATE_DEFAULT, FLOW_SLOW_DEFAULT, FLOW_SPRINT_DEFAULT, calcMinPerPerson,
+} from '../tokens.ts';
 import type { Stand, QueueEntry, ExitReason } from '../types.ts';
 
 export type ClientStep = 'loading' | 'splash' | 'waiting' | 'checkin' | 'validation';
@@ -40,7 +44,7 @@ export interface ClientActions {
 // Architecture:
 //   Each client gets an atomic queue_position (counter on the stand doc).
 //   positionAhead = number of active clients with a lower position.
-//   → Updates automatically whenever someone leaves (status→done drops out of the query).
+//   → Updates automatically whenever someone leaves (their queue doc is deleted).
 //   → Concurrent joins get unique positions via Firestore transaction.
 export function useClientSession(
   stand: Stand | null,
@@ -48,7 +52,8 @@ export function useClientSession(
   const [uid,           setUid]           = useState<string | null>(null);
   const [client,        setClient]        = useState<QueueEntry | null>(null);
   const [authReady,     setReady]         = useState(false);
-  const [positionAhead, setPositionAhead] = useState(0);
+  // null = query not yet returned (avoids false-positive orange trigger on initial render)
+  const [positionAhead, setPositionAhead] = useState<number | null>(null);
 
   const standRef   = doc(db, 'stands', STAND_ID || '__no_stand__');
   const historyCol = collection(db, 'stands', STAND_ID || '__no_stand__', 'history');
@@ -74,7 +79,7 @@ export function useClientSession(
   // ─── Live position: active clients ahead of me ────────────────
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!uid || !client?.queue_position) { setPositionAhead(0); return; }
+    if (!uid || !client?.queue_position) { setPositionAhead(null); return; }
     const myPos = client.queue_position;
     // Fix #1: filter by stand_id to support multi-stand deployments
     const q = query(
@@ -90,19 +95,28 @@ export function useClientSession(
     });
   }, [uid, client?.queue_position]);
 
-  // ─── Auto-call when client enters the first wave batch ────────
-  // Guard: skip if already called (prevents re-calling after delay re-entry)
+  // ─── Auto-call when estimated wait falls within the call-ahead window ─
+  // Guard: positionAhead=null means the query hasn't returned yet — skip to avoid
+  // triggering orange at position 0 before real data arrives.
+  // Threshold = call_ahead_min × 1.3 (buffer for travel time + non-app users).
   useEffect(() => {
     if (!uid || !client || client.status !== 'waiting' || client.called_at) return;
-    if (positionAhead < WAVE_SIZE) {
+    if (positionAhead === null) return;
+    const minPerPerson     = stand?.min_per_person ?? 3;
+    const callAheadMin     = stand?.call_ahead_min ?? CALL_AHEAD_MIN_DEFAULT;
+    const estimatedWaitMin = positionAhead * minPerPerson;
+    if (estimatedWaitMin <= callAheadMin * CALL_BUFFER_FACTOR) {
       updateDoc(doc(db, 'queue', uid), {
         status:    'orange',
         called_at: serverTimestamp(),
       });
     }
-  }, [positionAhead, client?.status, uid]);
+  }, [positionAhead, client?.status, uid, stand?.min_per_person, stand?.call_ahead_min]);
 
   // ─── History write ─────────────────────────────────────────────
+  // On completed service: uses a transaction to atomically read the current EMA,
+  // compute the new blend, and write history + stand update together.
+  // On other exits: simple batch (no stand update needed beyond optional rating).
   async function writeHistory(reason: ExitReason, currentClient: QueueEntry | null, ratingData?: RatingData) {
     const c = currentClient || client;
     if (!uid || !c) return;
@@ -126,15 +140,47 @@ export function useClientSession(
       if (c.claimed_at)
         record.service_ms = nowMs - c.claimed_at.toMillis();
     } catch (_) {}
-    const batch = writeBatch(db);
-    batch.set(doc(historyCol), record);
-    if (ratingData) {
-      batch.update(standRef, {
-        rating_count: increment(1),
-        rating_sum:   increment(ratingData.rating),
+
+    const serviceMsValue = record.service_ms as number | undefined;
+    const shouldLearnEMA = reason === 'completed' && serviceMsValue != null && serviceMsValue > 0;
+
+    if (shouldLearnEMA) {
+      // Atomically read EMA state, blend with slider base, persist.
+      const histRef = doc(historyCol);
+      await runTransaction(db, async (tx) => {
+        const standSnap = await tx.get(standRef);
+        const d = standSnap.data() ?? {};
+        const prevEma  = (d.service_ms_ema as number | undefined) ?? serviceMsValue!;
+        const count    = ((d.service_count as number | undefined) ?? 0) + 1;
+        const newEma   = EMA_ALPHA * serviceMsValue! + (1 - EMA_ALPHA) * prevEma;
+        const emaMins  = newEma / 60_000;
+        const sliderBase = calcMinPerPerson(
+          (d.flow_rate   as number | undefined) ?? FLOW_RATE_DEFAULT,
+          (d.flow_slow   as number | undefined) ?? FLOW_SLOW_DEFAULT,
+          (d.flow_sprint as number | undefined) ?? FLOW_SPRINT_DEFAULT,
+        );
+        // Weight increases from 0 → 80 % over the first 30 services, then stays at 80 %.
+        const weight          = Math.min(0.8, count / 30);
+        const newMinPerPerson = +(( weight * emaMins + (1 - weight) * sliderBase).toFixed(2));
+        tx.set(histRef, record);
+        tx.update(standRef, {
+          service_ms_ema:  newEma,
+          service_count:   count,
+          min_per_person:  newMinPerPerson,
+          ...(ratingData ? { rating_count: increment(1), rating_sum: increment(ratingData.rating) } : {}),
+        });
       });
+    } else {
+      const batch = writeBatch(db);
+      batch.set(doc(historyCol), record);
+      if (ratingData) {
+        batch.update(standRef, {
+          rating_count: increment(1),
+          rating_sum:   increment(ratingData.rating),
+        });
+      }
+      await batch.commit();
     }
-    await batch.commit();
   }
 
   // ─── Actions ───────────────────────────────────────────────────
@@ -194,7 +240,7 @@ export function useClientSession(
   const leave = useCallback(async (reason: ExitReason = 'left_voluntarily') => {
     if (!uid) return;
     try { await writeHistory(reason, client); } catch (e) { console.warn('writeHistory:', e); }
-    await updateDoc(doc(db, 'queue', uid), { status: 'done' });
+    await deleteDoc(doc(db, 'queue', uid));
   }, [uid, client]);
 
   const confirmPresence = useCallback(async () => {
@@ -209,7 +255,7 @@ export function useClientSession(
   const done = useCallback(async (reason: ExitReason = 'completed', ratingData?: RatingData) => {
     if (!uid) return;
     try { await writeHistory(reason, client, ratingData); } catch (e) { console.warn('writeHistory:', e); }
-    await updateDoc(doc(db, 'queue', uid), { status: 'done' });
+    await deleteDoc(doc(db, 'queue', uid));
   }, [uid, client]);
 
   const extend = useCallback(async () => {
@@ -219,21 +265,21 @@ export function useClientSession(
 
   const restart = useCallback(async () => {
     if (!uid) return;
-    await updateDoc(doc(db, 'queue', uid), { status: 'done' });
-    setClient(null);
+    await deleteDoc(doc(db, 'queue', uid));
   }, [uid]);
 
   // ─── Derived values ────────────────────────────────────────────
-  const step         = deriveStep(client, authReady);
-  const minPerPerson = stand?.min_per_person ?? 2.5;
+  const step           = deriveStep(client, authReady);
+  const minPerPerson   = stand?.min_per_person ?? 2.5;
+  const resolvedAhead  = positionAhead ?? 0;
   // Wait = people ahead × time per person (updates in real time)
-  const estimatedMin  = Math.max(1, Math.round(positionAhead * minPerPerson));
+  const estimatedMin   = Math.max(1, Math.round(resolvedAhead * minPerPerson));
   const waitingStatus: 'red' | 'orange' = estimatedMin < 5 ? 'orange' : 'red';
 
   return [
     client,
     step,
-    { estimatedMin, waitingStatus, positionAhead },
+    { estimatedMin, waitingStatus, positionAhead: resolvedAhead },
     { join, requestDelay, leave, confirmPresence, done, extend, restart },
   ];
 }
