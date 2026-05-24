@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useStand } from './useStand';
-import { onSnapshot, updateDoc, setDoc, increment } from 'firebase/firestore';
+import { onSnapshot, updateDoc, setDoc, increment, deleteField } from 'firebase/firestore';
 
 describe('useStand', () => {
   // Boots the hook, optionally fires a snapshot with stand data
@@ -117,6 +117,16 @@ describe('useStand', () => {
     const result = boot();
     await act(async () => { await result.current[1].setFlowRate(1); });
     expect(updateDoc).not.toHaveBeenCalled();
+  });
+
+  it('setFlowRate resets EMA: deleteField sur service_ms_ema et service_count à 0', async () => {
+    const result = boot({ flow_rate: 3, flow_slow: 5, flow_sprint: 1, service_ms_ema: 120_000, service_count: 10 });
+    await act(async () => { await result.current[1].setFlowRate(1); });
+    expect(deleteField).toHaveBeenCalled();
+    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      service_count: 0,
+      flow_rate: 4,
+    }));
   });
 
   // ─── configure ────────────────────────────────────────────────
