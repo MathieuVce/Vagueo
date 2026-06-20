@@ -168,7 +168,7 @@ export default function ScreenCheckin({
               letterSpacing: '-0.01em',
             }}
           >
-            Pas encore là — décaler d'environ {delayMin} min
+            Pas encore là · décaler d'environ {delayMin} min
           </button>
         )}
       </div>

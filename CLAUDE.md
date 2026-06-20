@@ -53,7 +53,7 @@ Définis dans [.claude/settings.json](.claude/settings.json) (`permissions.deny`
 - **Toute la logique Firestore vit dans les hooks** (`use*.ts`), jamais dans les écrans. Les écrans reçoivent données + callbacks en props.
 - `tokens.ts` est la **source unique** des constantes et des calculs (couleurs, `STAND_ID`, `calcMinPerPerson`, seuils EMA/wave). Ne pas dupliquer ces valeurs.
 - Réutiliser les primitives `ui/` (Button, Field, Segment, Toggle, Drawer, Toast) plutôt que refaire des éléments stylés à la main.
-- **Textes affichés** : préférer `/`, `·`, `…` aux tirets cadratin/demi-cadratin (`—`/`–`). Convention douce, non bloquée par le linter.
+- **Textes affichés** : **interdit** d'écrire un tiret cadratin (`—`) ou demi-cadratin (`–`) dans le texte affiché (titres, labels, JSX, placeholders) ; utiliser `/`, `·` ou `…`. **Règle ESLint** `no-restricted-syntax` (erreur) sur `src/**` hors tests. Le tiret simple `-` reste autorisé (calculs, kebab-case, URLs, mots composés français).
 - `npx tsc --noEmit` doit passer (TS strict). Pas de code mort.
 
 ## Architecture

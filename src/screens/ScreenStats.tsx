@@ -92,10 +92,10 @@ function buildPrintHTML(stats: Stats, period: Period, standId: string): string {
   if (stats.total === 0) {
     return `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8">
-<title>Vaguéo — Statistiques</title>
+<title>Vaguéo · Statistiques</title>
 <style>body{font-family:Inter,sans-serif;padding:40px;color:#11141a}h1{font-size:22px;margin:0 0 4px}.meta{color:#6b6f78;font-size:13px;margin-bottom:32px}.empty{font-size:15px;color:#6b6f78}</style>
 </head><body>
-<h1>Vaguéo — Statistiques</h1>
+<h1>Vaguéo · Statistiques</h1>
 <div class="meta">${periodLabel} · ${dateStr} · Stand ${standId}</div>
 <div class="empty">Aucun passage enregistré pour cette période.</div>
 </body></html>`;
@@ -136,7 +136,7 @@ function buildPrintHTML(stats: Stats, period: Period, standId: string): string {
 
   return `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8">
-<title>Vaguéo — Statistiques ${periodLabel}</title>
+<title>Vaguéo · Statistiques ${periodLabel}</title>
 <style>
   @page{size:A4;margin:18mm}
   body{font-family:Inter,sans-serif;color:#11141a;font-size:13px;line-height:1.5}
@@ -155,7 +155,7 @@ function buildPrintHTML(stats: Stats, period: Period, standId: string): string {
   .footer{margin-top:36px;font-size:10px;color:#6b6f78;border-top:1px solid rgba(17,20,26,.08);padding-top:10px}
 </style>
 </head><body>
-<h1>Vaguéo — Statistiques</h1>
+<h1>Vaguéo · Statistiques</h1>
 <div class="meta">${periodLabel} · ${dateStr} · Stand ${standId}</div>
 <div class="cards">
   <div class="card"><div class="val">${stats.total}</div><div class="lbl">Passages</div></div>
@@ -563,13 +563,13 @@ export default function ScreenStats({
 
             <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
               <StatCard
-                value={stats.avgWaitMin != null ? `~${stats.avgWaitMin}` : '—'}
+                value={stats.avgWaitMin != null ? `~${stats.avgWaitMin}` : '·'}
                 label="min d'attente"
                 sublabel="avant d'être appelé"
                 mono
               />
               <StatCard
-                value={stats.avgServiceMin != null ? `~${stats.avgServiceMin}` : '—'}
+                value={stats.avgServiceMin != null ? `~${stats.avgServiceMin}` : '·'}
                 label="min au stand"
                 sublabel="de la conf. à la fin"
                 mono
@@ -829,7 +829,7 @@ function StatCard({ value, label, sublabel, color, big, mono }: StatCardProps) {
           color: color ?? p.ink,
         }}
       >
-        {value ?? '—'}
+        {value ?? '·'}
       </div>
       <div
         style={{

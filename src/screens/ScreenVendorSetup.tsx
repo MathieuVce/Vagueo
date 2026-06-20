@@ -257,7 +257,7 @@ export default function ScreenVendorSetup({
             </div>
           </div>
           {logoUrl && imgError && (
-            <div style={s.logoError}>Image inaccessible — vérifiez que l'URL est publique.</div>
+            <div style={s.logoError}>Image inaccessible · vérifiez que l'URL est publique.</div>
           )}
         </div>
 
@@ -409,7 +409,7 @@ export default function ScreenVendorSetup({
               on={isOpen}
               onToggle={() => setIsOpen((v) => !v)}
               label={
-                isOpen ? 'Ouverte — les clients peuvent rejoindre' : 'Fermée — QR code inactif'
+                isOpen ? 'Ouverte · les clients peuvent rejoindre' : 'Fermée · QR code inactif'
               }
               sublabel={
                 isOpen

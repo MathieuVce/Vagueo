@@ -31,7 +31,7 @@ export default function ScreenQRCode({ stand, onClose }: ScreenQRCodeProps) {
     }
     win.document.write(`<!DOCTYPE html>
 <html><head><meta charset="utf-8">
-<title>QR — ${standName}</title>
+<title>QR · ${standName}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,sans-serif;display:flex;flex-direction:column;
@@ -119,7 +119,7 @@ export default function ScreenQRCode({ stand, onClose }: ScreenQRCodeProps) {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `File d'attente — ${standName}`,
+          title: `File d'attente · ${standName}`,
           text: "Rejoignez la file d'attente sans attendre devant le stand.",
           url: clientUrl,
         });
@@ -139,7 +139,7 @@ export default function ScreenQRCode({ stand, onClose }: ScreenQRCodeProps) {
     });
   }
 
-  const mailtoHref = `mailto:?subject=${encodeURIComponent(`QR Code — ${standName}`)}&body=${encodeURIComponent(`Rejoignez la file d'attente de ${standName} sans attendre !\n\nLien direct :\n${clientUrl}\n\nOu scannez le QR code disponible auprès du stand.`)}`;
+  const mailtoHref = `mailto:?subject=${encodeURIComponent(`QR Code · ${standName}`)}&body=${encodeURIComponent(`Rejoignez la file d'attente de ${standName} sans attendre !\n\nLien direct :\n${clientUrl}\n\nOu scannez le QR code disponible auprès du stand.`)}`;
 
   return (
     <div
@@ -283,7 +283,7 @@ export default function ScreenQRCode({ stand, onClose }: ScreenQRCodeProps) {
               maxWidth: 260,
             }}
           >
-            La file est fermée — ouvrez-la depuis le dashboard pour que les clients puissent
+            La file est fermée · ouvrez-la depuis le dashboard pour que les clients puissent
             scanner.
           </div>
         )}

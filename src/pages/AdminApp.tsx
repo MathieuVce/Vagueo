@@ -1063,7 +1063,7 @@ function StandCard({
           value={
             (stand.rating_count ?? 0) > 0
               ? `${((stand.rating_sum ?? 0) / stand.rating_count!).toFixed(1)} ★`
-              : '— ★'
+              : '· ★'
           }
         />
         <Metric label="Avis écrits" value={stand.rating_count ?? 0} />
@@ -1364,7 +1364,7 @@ export default function AdminApp() {
             }}
           >
             <span>
-              Stand créé — ID&nbsp;
+              Stand créé · ID&nbsp;
               <span style={{ fontFamily: FONT.mono, fontWeight: 700 }}>{newId}</span>
             </span>
             <button

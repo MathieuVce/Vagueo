@@ -38,5 +38,34 @@ export default ts.config(
     },
   },
 
+  // Convention front : pas de tiret cadratin (U+2014) ni demi-cadratin (U+2013)
+  // dans le texte affiché (titres, labels, JSX, placeholders). Utiliser /, le
+  // point médian (U+00B7) ou les points de suspension. Ne couvre ni les
+  // commentaires ni le tiret simple (calculs, kebab-case, URLs). Voir CLAUDE.md.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/*.test.{ts,tsx}', 'src/test/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/[\\u2013\\u2014]/]',
+          message:
+            'Tiret cadratin/demi-cadratin interdit dans le texte affiché. Utiliser /, le point médian ou les points de suspension.',
+        },
+        {
+          selector: 'TemplateElement[value.raw=/[\\u2013\\u2014]/]',
+          message:
+            'Tiret cadratin/demi-cadratin interdit dans le texte affiché. Utiliser /, le point médian ou les points de suspension.',
+        },
+        {
+          selector: 'JSXText[value=/[\\u2013\\u2014]/]',
+          message:
+            'Tiret cadratin/demi-cadratin interdit dans le texte affiché. Utiliser /, le point médian ou les points de suspension.',
+        },
+      ],
+    },
+  },
+
   prettier,
 );

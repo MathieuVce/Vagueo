@@ -153,7 +153,7 @@ export default function ScreenVendorLogin({
       {/* Footer */}
       <div style={{ padding: '0 32px 40px', textAlign: 'center' }}>
         <div style={{ fontSize: 11, color: p.mute, lineHeight: 1.6 }}>
-          Votre compte Google est lié au stand — accès protégé.
+          Votre compte Google est lié au stand · accès protégé.
         </div>
       </div>
     </div>

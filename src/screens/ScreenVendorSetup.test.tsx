@@ -123,18 +123,18 @@ describe('ScreenVendorSetup', () => {
 
   it('shows "Ouverte" label when is_open is true', () => {
     render(<ScreenVendorSetup stand={mockStand} onSave={() => {}} />);
-    expect(screen.getByText(/Ouverte — les clients peuvent rejoindre/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ouverte · les clients peuvent rejoindre/i)).toBeInTheDocument();
   });
 
   it('shows "Fermée" label when is_open is false', () => {
     render(<ScreenVendorSetup stand={standNoLimits} onSave={() => {}} />);
-    expect(screen.getByText(/Fermée — QR code inactif/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fermée · QR code inactif/i)).toBeInTheDocument();
   });
 
   it('toggles is_open state when Toggle is clicked', () => {
     render(<ScreenVendorSetup stand={mockStand} onSave={() => {}} />);
     fireEvent.click(screen.getByRole('switch'));
-    expect(screen.getByText(/Fermée — QR code inactif/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fermée · QR code inactif/i)).toBeInTheDocument();
   });
 
   // ─── Flow rate ─────────────────────────────────────────────────

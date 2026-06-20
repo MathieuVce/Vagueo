@@ -350,7 +350,7 @@ export default function ScreenVendor({
   const hh = String(clock.getHours()).padStart(2, '0');
   const mm = String(clock.getMinutes()).padStart(2, '0');
 
-  const colorName = SECURE_COLORS.find((c) => c.hex === secure_color)?.name ?? '—';
+  const colorName = SECURE_COLORS.find((c) => c.hex === secure_color)?.name ?? '·';
   const flowLabel = FLOW_RATE_LABELS[(flow_rate ?? 3) - 1];
 
   return (
@@ -358,14 +358,14 @@ export default function ScreenVendor({
       {/* Dev banner */}
       {isDevMode && !isDemoMode && (
         <div style={s.devBanner}>
-          <span>DEV — Auth désactivée (npm run dev)</span>
+          <span>DEV · Auth désactivée (npm run dev)</span>
         </div>
       )}
 
       {/* Demo banner */}
       {isDemoMode && (
         <div style={{ ...s.demoBanner, background: p.call, color: p.ink }}>
-          <span>⚠ Mode démo — non protégé</span>
+          <span>⚠ Mode démo · non protégé</span>
           <button onClick={onSignOut} style={s.demoQuit}>
             Quitter →
           </button>
@@ -482,7 +482,7 @@ export default function ScreenVendor({
             <div style={s.statsBig}>
               {waitingCount > 0
                 ? `~${Math.max(1, Math.round(waitingCount * (stand.min_per_person ?? 3)))}m`
-                : '—'}
+                : '·'}
             </div>
             <div style={s.statsLabel}>attente max</div>
           </div>
