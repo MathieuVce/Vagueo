@@ -133,7 +133,7 @@ export default function ScreenQRCode({ stand, onClose }: ScreenQRCodeProps) {
   }
 
   function copyToClipboard() {
-    navigator.clipboard.writeText(clientUrl).then(() => {
+    void navigator.clipboard.writeText(clientUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     });

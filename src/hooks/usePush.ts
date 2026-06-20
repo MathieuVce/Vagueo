@@ -24,7 +24,7 @@ export function usePush(): UsePushReturn {
     try {
       const reg = await navigator.serviceWorker.ready;
       // renotify/vibrate sont valides à l'exécution mais absents du type lib DOM
-      reg.showNotification(title, {
+      await reg.showNotification(title, {
         body,
         icon: '/icon-192.png',
         tag: 'vagueo-turn',

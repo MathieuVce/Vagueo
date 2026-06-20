@@ -11,7 +11,9 @@ Trois rôles : **client** (anonyme), **vendeur** (Google), **admin** (Google).
 - `npm run dev` — dev local. `npm run build` — `tsc --noEmit && vite build`.
 - `npm run typecheck` — `tsc --noEmit`. `npm run lint` (ESLint) · `npm run format` (Prettier, `format:check` pour vérifier).
 - `npm test` — Vitest watch. `vitest run` — une passe. Ciblé : `test:hooks`, `test:pages`, `test:screens`, `test:ui`, `test:components`, `test:flows`. `npm run coverage`.
-- `npm run check` — `typecheck && lint && vitest run` (porte de qualité complète).
+- `npm run test:rules` — tests des règles Firestore contre l'émulateur (Java requis). Vit dans `tests/`, config séparée [vitest.rules.config.ts](vitest.rules.config.ts) sans les mocks.
+- `npm run knip` — détecte exports / dépendances / fichiers morts (audit manuel, pas dans la CI).
+- `npm run check` — `typecheck && lint && vitest run` (porte de qualité complète, aussi lancée par le hook **pre-push**).
 
 **Boucle de vérif après une modif** (rapide, autonome) : `npx tsc --noEmit` → `npm run lint` → `vitest run` (au moins le dossier touché). Un **hook PostToolUse** lance déjà `tsc --noEmit` automatiquement après chaque édition `.ts/.tsx` (voir [.claude/settings.json](.claude/settings.json)) et te renvoie les erreurs. Ne conclure « fait » qu'après une vérif **verte**.
 
@@ -39,7 +41,7 @@ Principe : **agir, se vérifier soi-même, ne demander que les vrais choix produ
 - **Conventional Commits**, format `<type>(<scope>): <description>`. Types : `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`. Descriptions en **français** (cohérent avec l'historique).
 - **Jamais de trailer `Co-Authored-By`** ni mention d'assistant dans les messages.
 - **Corps de PR** : pas d'emojis, pas de footer « Generated with… », pas de checklist. Phrases simples : contexte puis changements.
-- Hooks Git automatiques : **pre-commit** (husky + lint-staged) formate/lint les fichiers stagés ; **commit-msg** (commitlint) valide le format. Pas besoin de formater à la main.
+- Hooks Git automatiques : **pre-commit** (husky + lint-staged) formate/lint les fichiers stagés ; **commit-msg** (commitlint) valide le format ; **pre-push** lance `npm run check`. Pas besoin de formater à la main.
 - Push sur `main` = **déploiement Vercel automatique** : ne pousser sur `main` qu'à la demande explicite de l'utilisateur.
 
 ## Fichiers d'exclusion stricts
@@ -55,6 +57,7 @@ Définis dans [.claude/settings.json](.claude/settings.json) (`permissions.deny`
 - Réutiliser les primitives `ui/` (Button, Field, Segment, Toggle, Drawer, Toast) plutôt que refaire des éléments stylés à la main.
 - **Textes affichés** : **interdit** d'écrire un tiret cadratin (`—`) ou demi-cadratin (`–`) dans le texte affiché (titres, labels, JSX, placeholders) ; utiliser `/`, `·` ou `…`. **Règle ESLint** `no-restricted-syntax` (erreur) sur `src/**` hors tests. Le tiret simple `-` reste autorisé (calculs, kebab-case, URLs, mots composés français).
 - `npx tsc --noEmit` doit passer (TS strict). Pas de code mort.
+- **Promesses** : règle ESLint type-aware `no-floating-promises`. Un appel async non attendu (souvent un `updateDoc`/`deleteDoc` Firestore en fire-and-forget dans un effet ou un handler) doit être préfixé par `void`, sinon `await` + gestion d'erreur.
 
 ## Architecture
 

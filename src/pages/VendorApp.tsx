@@ -44,7 +44,7 @@ export default function VendorApp() {
 
   // Claim stand on first authorized login
   useEffect(() => {
-    if (user && isUnclaimed) claimStand(user.uid, user.email);
+    if (user && isUnclaimed) void claimStand(user.uid, user.email);
   }, [user?.uid, isUnclaimed]);
 
   // Show setup when stand has no name yet after authorization
@@ -63,7 +63,7 @@ export default function VendorApp() {
     if (!stand || stand.is_paused || !stand.is_open) return;
     const ms = waveIntervalMs(stand.min_per_person ?? 3);
     intervalRef.current = setInterval(() => {
-      if (waitingRef.current > 0) advance();
+      if (waitingRef.current > 0) void advance();
     }, ms);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);

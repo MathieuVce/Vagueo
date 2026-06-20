@@ -47,9 +47,9 @@ export default function ClientApp() {
 
   // Notification triggers
   useEffect(() => {
-    if (step === 'waiting' && prevStep.current === 'splash') requestPermission();
+    if (step === 'waiting' && prevStep.current === 'splash') void requestPermission();
     if (step === 'checkin' && prevStep.current === 'waiting') {
-      notify("C'est votre tour !", 'Approchez-vous du stand Vaguéo.');
+      void notify("C'est votre tour !", 'Approchez-vous du stand Vaguéo.');
     }
     prevStep.current = step;
   }, [step]);
@@ -94,7 +94,7 @@ export default function ClientApp() {
       setOrangeModal(true);
       orangeRespRef.current = setTimeout(() => {
         setOrangeModal(false);
-        actions.leave('timeout_checkin');
+        void actions.leave('timeout_checkin');
       }, ORANGE_RESPONSE_MS);
     }, orangePromptMs);
 
@@ -119,7 +119,7 @@ export default function ClientApp() {
       setServiceModal(true);
       serviceRespRef.current = setTimeout(() => {
         setServiceModal(false);
-        actions.done('timeout_service');
+        void actions.done('timeout_service');
       }, SERVICE_RESPONSE_MS);
     }, promptMs);
 
@@ -250,7 +250,7 @@ export default function ClientApp() {
                     onPress: () => {
                       if (orangeRespRef.current) clearTimeout(orangeRespRef.current);
                       setOrangeModal(false);
-                      actions.leave('left_checkin');
+                      void actions.leave('left_checkin');
                     },
                   }
                 : {
@@ -258,7 +258,7 @@ export default function ClientApp() {
                     onPress: () => {
                       if (orangeRespRef.current) clearTimeout(orangeRespRef.current);
                       setOrangeModal(false);
-                      actions.requestDelay();
+                      void actions.requestDelay();
                     },
                   }
             }
@@ -270,7 +270,7 @@ export default function ClientApp() {
                     onPress: () => {
                       if (orangeRespRef.current) clearTimeout(orangeRespRef.current);
                       setOrangeModal(false);
-                      actions.leave('left_checkin');
+                      void actions.leave('left_checkin');
                     },
                   }
             }
@@ -300,7 +300,7 @@ export default function ClientApp() {
               onPress: () => {
                 if (serviceRespRef.current) clearTimeout(serviceRespRef.current);
                 setServiceModal(false);
-                actions.extend();
+                void actions.extend();
               },
             }}
             secondary={{
@@ -319,12 +319,12 @@ export default function ClientApp() {
             onSubmit={(rating, feedback) => {
               setShowRating(false);
               setShowMerci(true);
-              actions.done('completed', { rating, feedback });
+              void actions.done('completed', { rating, feedback });
             }}
             onSkip={() => {
               setShowRating(false);
               setShowMerci(true);
-              actions.done('completed');
+              void actions.done('completed');
             }}
           />
         )}
@@ -337,7 +337,7 @@ export default function ClientApp() {
       <ScreenMerci
         onRestart={() => {
           setShowMerci(false);
-          actions.restart();
+          void actions.restart();
         }}
       />
     );

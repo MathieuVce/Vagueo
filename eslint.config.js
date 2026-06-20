@@ -67,5 +67,22 @@ export default ts.config(
     },
   },
 
+  // Lint type-aware ciblé : attrape les promesses oubliées (ex. un updateDoc/
+  // deleteDoc Firestore lancé sans await ni gestion d'erreur). Pour un envoi
+  // volontairement « fire-and-forget », préfixer l'appel par `void`.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/*.test.{ts,tsx}', 'src/test/**'],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+    },
+  },
+
   prettier,
 );

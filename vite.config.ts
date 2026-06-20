@@ -10,6 +10,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    // Tests unitaires uniquement (Firestore mocké). Les tests de règles vivent
+    // dans tests/ et tournent contre l'émulateur via vitest.rules.config.ts.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

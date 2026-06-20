@@ -128,7 +128,7 @@ export function useClientSession(
     const callAheadMin = stand?.call_ahead_min ?? CALL_AHEAD_MIN_DEFAULT;
     const estimatedWaitMin = positionAhead * minPerPerson;
     if (estimatedWaitMin <= callAheadMin * CALL_BUFFER_FACTOR) {
-      updateDoc(doc(db, 'queue', uid), {
+      void updateDoc(doc(db, 'queue', uid), {
         status: 'orange',
         called_at: serverTimestamp(),
       });

@@ -275,7 +275,7 @@ function StandEditor({
   }
 
   function copyLink() {
-    navigator.clipboard.writeText(clientUrl).then(() => {
+    void navigator.clipboard.writeText(clientUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
