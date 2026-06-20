@@ -13,22 +13,22 @@ describe('ScreenVendor', () => {
 
   it('renders status and counts', () => {
     render(
-      <ScreenVendor 
-        stand={mockStand} 
-        presentCount={5} 
-        waitingCount={10} 
-        clock={new Date()} 
-        onTogglePause={() => {}} 
-        onToggleOpen={() => {}} 
-        onSetFlowRate={() => {}} 
-        onOpenSettings={() => {}} 
-        onOpenStats={() => {}} 
-        onOpenQR={() => {}} 
-        vendorEmail="test@example.com" 
-        onSignOut={() => {}} 
-        isDemoMode={false} 
-        isDevMode={false} 
-      />
+      <ScreenVendor
+        stand={mockStand}
+        presentCount={5}
+        waitingCount={10}
+        clock={new Date()}
+        onTogglePause={() => {}}
+        onToggleOpen={() => {}}
+        onSetFlowRate={() => {}}
+        onOpenSettings={() => {}}
+        onOpenStats={() => {}}
+        onOpenQR={() => {}}
+        vendorEmail="test@example.com"
+        onSignOut={() => {}}
+        isDemoMode={false}
+        isDevMode={false}
+      />,
     );
     expect(screen.getByText((_, node) => node?.textContent === 'En service')).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
@@ -38,23 +38,23 @@ describe('ScreenVendor', () => {
   it('shows dev toolbar if isDevMode is true and fns provided', () => {
     const handleAdd = vi.fn();
     render(
-      <ScreenVendor 
-        stand={mockStand} 
-        presentCount={5} 
-        waitingCount={10} 
-        clock={new Date()} 
-        onTogglePause={() => {}} 
-        onToggleOpen={() => {}} 
-        onSetFlowRate={() => {}} 
-        onOpenSettings={() => {}} 
-        onOpenStats={() => {}} 
-        onOpenQR={() => {}} 
-        vendorEmail="test@example.com" 
-        onSignOut={() => {}} 
-        isDemoMode={false} 
-        isDevMode={true} 
+      <ScreenVendor
+        stand={mockStand}
+        presentCount={5}
+        waitingCount={10}
+        clock={new Date()}
+        onTogglePause={() => {}}
+        onToggleOpen={() => {}}
+        onSetFlowRate={() => {}}
+        onOpenSettings={() => {}}
+        onOpenStats={() => {}}
+        onOpenQR={() => {}}
+        vendorEmail="test@example.com"
+        onSignOut={() => {}}
+        isDemoMode={false}
+        isDevMode={true}
         onDevAddClient={handleAdd}
-      />
+      />,
     );
     expect(screen.getAllByText(/DEV/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /\+ client/i })).toBeInTheDocument();

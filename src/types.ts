@@ -13,17 +13,17 @@ export interface Stand {
   name: string;
   logo_url: string;
   address?: string;
-  max_queue_size?: number | null;  // null = unlimited
-  max_delayed?: number | null;     // max simultaneous delayed clients (null = unlimited)
+  max_queue_size?: number | null; // null = unlimited
+  max_delayed?: number | null; // max simultaneous delayed clients (null = unlimited)
   vendor_uid?: string;
   vendor_email?: string;
   createdAt?: Timestamp;
   rating_count?: number;
   rating_sum?: number;
   status?: 'active' | 'pending_approval';
-  call_ahead_min?: number;   // minutes before estimated turn to trigger orange (default 8)
-  service_ms_ema?: number;   // exponential moving average of actual service durations
-  service_count?: number;    // number of completed services (weights the EMA blend)
+  call_ahead_min?: number; // minutes before estimated turn to trigger orange (default 8)
+  service_ms_ema?: number; // exponential moving average of actual service durations
+  service_count?: number; // number of completed services (weights the EMA blend)
 }
 
 export type QueueStatus = 'waiting' | 'orange' | 'claimed' | 'done';

@@ -13,11 +13,11 @@ describe('Toast', () => {
     vi.useFakeTimers();
     const handleDone = vi.fn();
     render(<Toast message="Auto hide" onDone={handleDone} duration={1000} />);
-    
+
     act(() => {
       vi.advanceTimersByTime(1000);
     });
-    
+
     expect(handleDone).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });

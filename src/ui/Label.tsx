@@ -3,13 +3,9 @@ import { TEXT, COLOR } from './design.ts';
 
 interface LabelProps {
   children: string;
-  style?:   CSSProperties;
+  style?: CSSProperties;
 }
 
 export function Label({ children, style }: LabelProps) {
-  return (
-    <div style={{ ...TEXT.label, color: COLOR.mute, ...style }}>
-      {children}
-    </div>
-  );
+  return <div style={{ ...TEXT.label, color: COLOR.mute, ...style }}>{children}</div>;
 }

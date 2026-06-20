@@ -17,8 +17,8 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: "24"
-          cache: "npm"
+          node-version: '24'
+          cache: 'npm'
 
       - run: npm ci
       - run: npm run lint
@@ -36,8 +36,8 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: "24"
-          cache: "npm"
+          node-version: '24'
+          cache: 'npm'
 
       - run: npm ci
 

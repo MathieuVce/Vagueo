@@ -21,8 +21,10 @@ vi.mock('../hooks/useQueueCounts');
 vi.mock('../hooks/useVendorStandLookup');
 vi.mock('../hooks/useDevHelpers', () => ({
   useDevHelpers: () => ({
-    devAddClient: vi.fn(), devRemoveClient: vi.fn(),
-    devClearQueue: vi.fn(), devResetStore: vi.fn(),
+    devAddClient: vi.fn(),
+    devRemoveClient: vi.fn(),
+    devClearQueue: vi.fn(),
+    devResetStore: vi.fn(),
   }),
 }));
 
@@ -48,15 +50,22 @@ vi.mock('../screens/ScreenVendorCreate', () => ({
 
 describe('VendorApp — sans STAND_ID', () => {
   const mockActions = {
-    advance: vi.fn(), togglePause: vi.fn(), toggleOpen: vi.fn(),
-    setFlowRate: vi.fn(), configure: vi.fn().mockResolvedValue({}), claimStand: vi.fn(),
+    advance: vi.fn(),
+    togglePause: vi.fn(),
+    toggleOpen: vi.fn(),
+    setFlowRate: vi.fn(),
+    configure: vi.fn().mockResolvedValue({}),
+    claimStand: vi.fn(),
   };
 
   const googleUser = { uid: 'v1', email: 'vendor@test.com', isAnonymous: false };
 
   const baseAuth: any = {
     user: googleUser,
-    loading: false, isAuthorized: false, isOwner: false, isUnclaimed: false,
+    loading: false,
+    isAuthorized: false,
+    isOwner: false,
+    isUnclaimed: false,
     signIn: vi.fn().mockResolvedValue(undefined),
     signOut: vi.fn().mockResolvedValue(undefined),
     error: null,
@@ -68,7 +77,10 @@ describe('VendorApp — sans STAND_ID', () => {
     vi.clearAllMocks();
     (useStandHook.useStand as any).mockReturnValue([null, mockActions]);
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue(baseAuth);
-    (useQueueCountsHook.useQueueCounts as any).mockReturnValue({ presentCount: 0, waitingCount: 0 });
+    (useQueueCountsHook.useQueueCounts as any).mockReturnValue({
+      presentCount: 0,
+      waitingCount: 0,
+    });
     // Default: lookup done, no existing stand → show create form
     (useVendorStandLookupHook.useVendorStandLookup as any).mockReturnValue('none');
 
@@ -113,7 +125,8 @@ describe('VendorApp — sans STAND_ID', () => {
 
   it('shows login screen when user is anonymous', () => {
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({
-      ...baseAuth, user: { uid: 'anon', isAnonymous: true },
+      ...baseAuth,
+      user: { uid: 'anon', isAnonymous: true },
     });
     render(<VendorApp />);
     expect(screen.getByText('Se connecter avec Google')).toBeInTheDocument();
@@ -149,7 +162,10 @@ describe('VendorApp — sans STAND_ID', () => {
     // Page de login
     const signIn = vi.fn().mockResolvedValue(undefined);
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({
-      ...baseAuth, user: null, loading: false, signIn,
+      ...baseAuth,
+      user: null,
+      loading: false,
+      signIn,
     });
     rerender(<VendorApp />);
     expect(screen.getByText('Se connecter avec Google')).toBeInTheDocument();

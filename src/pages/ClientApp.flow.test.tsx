@@ -20,13 +20,20 @@ describe('ClientApp — flux utilisateur', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     actions = {
-      join: vi.fn(), leave: vi.fn(), confirmPresence: vi.fn(),
-      done: vi.fn(), requestDelay: vi.fn(), extend: vi.fn(), restart: vi.fn(),
+      join: vi.fn(),
+      leave: vi.fn(),
+      confirmPresence: vi.fn(),
+      done: vi.fn(),
+      requestDelay: vi.fn(),
+      extend: vi.fn(),
+      restart: vi.fn(),
     };
     (useStand as any).mockReturnValue([mockStand, {}]);
   });
 
-  afterEach(() => { vi.useRealTimers(); });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   // ─── Parcours complet ──────────────────────────────────────────
 
@@ -41,7 +48,10 @@ describe('ClientApp — flux utilisateur', () => {
 
     // En attente
     (useClientSession as any).mockReturnValue([
-      { status: 'waiting', delay_used: false }, 'waiting', baseDerived, actions,
+      { status: 'waiting', delay_used: false },
+      'waiting',
+      baseDerived,
+      actions,
     ]);
     rerender(<ClientApp />);
     expect(screen.getByText(/Attente estimée/i)).toBeInTheDocument();
@@ -49,7 +59,9 @@ describe('ClientApp — flux utilisateur', () => {
     // Called (checkin)
     (useClientSession as any).mockReturnValue([
       { status: 'checkin', delay_used: false, called_at: { toMillis: () => 1000 } },
-      'checkin', baseDerived, actions,
+      'checkin',
+      baseDerived,
+      actions,
     ]);
     rerender(<ClientApp />);
     expect(screen.getByText(/Approchez/i)).toBeInTheDocument();
@@ -59,7 +71,9 @@ describe('ClientApp — flux utilisateur', () => {
     // En service (validation)
     (useClientSession as any).mockReturnValue([
       { status: 'validation', delay_used: false, claimed_at: { toMillis: () => 1000 } },
-      'validation', baseDerived, actions,
+      'validation',
+      baseDerived,
+      actions,
     ]);
     rerender(<ClientApp />);
     expect(screen.getByText(/Montrez cet écran au vendeur/i)).toBeInTheDocument();
@@ -78,10 +92,16 @@ describe('ClientApp — flux utilisateur', () => {
     // positionAhead: 0 → orangePromptMs = 180s ; sinon (2 personnes × 3min) = 360s
     (useClientSession as any).mockReturnValue([
       { status: 'checkin', delay_used: false, called_at: { toMillis: () => 1000 } },
-      'checkin', { ...baseDerived, positionAhead: 0 }, actions,
+      'checkin',
+      { ...baseDerived, positionAhead: 0 },
+      actions,
     ]);
-    await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(181_000); });
+    await act(async () => {
+      render(<ClientApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(181_000);
+    });
 
     expect(screen.getByText(/Vous êtes encore là/i)).toBeInTheDocument();
     // Target the modal button ("Décaler d'environ…"), not ScreenCheckin's ("Pas encore là — décaler…")
@@ -96,10 +116,16 @@ describe('ClientApp — flux utilisateur', () => {
     vi.useFakeTimers();
     (useClientSession as any).mockReturnValue([
       { status: 'checkin', delay_used: true, called_at: { toMillis: () => 1000 } },
-      'checkin', { ...baseDerived, positionAhead: 0 }, actions,
+      'checkin',
+      { ...baseDerived, positionAhead: 0 },
+      actions,
     ]);
-    await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(181_000); });
+    await act(async () => {
+      render(<ClientApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(181_000);
+    });
 
     expect(screen.getByText(/Vous êtes encore là/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Quitter la file/i }));
@@ -109,14 +135,20 @@ describe('ClientApp — flux utilisateur', () => {
 
   // ─── Parcours "J'ai fini" depuis le modal de service ─────────
 
-  it('validation → timeout service → J\'ai fini → noter avec étoile → soumettre', async () => {
+  it("validation → timeout service → J'ai fini → noter avec étoile → soumettre", async () => {
     vi.useFakeTimers();
     (useClientSession as any).mockReturnValue([
       { status: 'validation', delay_used: false, claimed_at: { toMillis: () => 1000 } },
-      'validation', baseDerived, actions,
+      'validation',
+      baseDerived,
+      actions,
     ]);
-    await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(901_000); });
+    await act(async () => {
+      render(<ClientApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(901_000);
+    });
 
     expect(screen.getByText(/Toujours en cours/i)).toBeInTheDocument();
     fireEvent.click(screen.getByText(/J'ai fini, merci/));
@@ -139,10 +171,13 @@ describe('ClientApp — flux utilisateur', () => {
 
   // ─── Parcours pause ───────────────────────────────────────────
 
-  it('pause visible en file d\'attente puis disparaît après reprise', () => {
+  it("pause visible en file d'attente puis disparaît après reprise", () => {
     (useStand as any).mockReturnValue([{ ...mockStand, is_paused: true }, {}]);
     (useClientSession as any).mockReturnValue([
-      { status: 'waiting', delay_used: false }, 'waiting', baseDerived, actions,
+      { status: 'waiting', delay_used: false },
+      'waiting',
+      baseDerived,
+      actions,
     ]);
     const { rerender } = render(<ClientApp />);
     expect(screen.getByText(/En pause/i)).toBeInTheDocument();

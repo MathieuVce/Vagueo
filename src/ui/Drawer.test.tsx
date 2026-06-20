@@ -21,16 +21,18 @@ describe('Drawer', () => {
   it('renders header via DrawerHeader', () => {
     const handleClose = vi.fn();
     render(
-      <Drawer 
-        onClose={() => {}} 
-        header={<DrawerHeader title="Settings" subtitle="Change your settings" onClose={handleClose} />}
+      <Drawer
+        onClose={() => {}}
+        header={
+          <DrawerHeader title="Settings" subtitle="Change your settings" onClose={handleClose} />
+        }
       >
         Content
-      </Drawer>
+      </Drawer>,
     );
     expect(screen.getByText('Settings')).toBeInTheDocument();
     expect(screen.getByText('Change your settings')).toBeInTheDocument();
-    
+
     fireEvent.click(screen.getByText('×'));
     expect(handleClose).toHaveBeenCalledTimes(1);
   });

@@ -1,15 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import {
-  doc, onSnapshot, updateDoc, deleteDoc,
-  serverTimestamp, collection, query, where,
-  deleteField, runTransaction, getDocs, writeBatch, increment,
+  doc,
+  onSnapshot,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  deleteField,
+  runTransaction,
+  getDocs,
+  writeBatch,
+  increment,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase.ts';
 import {
-  WAVE_SIZE, STAND_ID,
-  CALL_AHEAD_MIN_DEFAULT, CALL_BUFFER_FACTOR, EMA_ALPHA,
-  FLOW_RATE_DEFAULT, FLOW_SLOW_DEFAULT, FLOW_SPRINT_DEFAULT, calcMinPerPerson,
+  WAVE_SIZE,
+  STAND_ID,
+  CALL_AHEAD_MIN_DEFAULT,
+  CALL_BUFFER_FACTOR,
+  EMA_ALPHA,
+  FLOW_RATE_DEFAULT,
+  FLOW_SLOW_DEFAULT,
+  FLOW_SPRINT_DEFAULT,
+  calcMinPerPerson,
 } from '../tokens.ts';
 import type { Stand, QueueEntry, ExitReason } from '../types.ts';
 
@@ -49,20 +65,24 @@ export interface ClientActions {
 export function useClientSession(
   stand: Stand | null,
 ): [QueueEntry | null, ClientStep, DerivedValues, ClientActions] {
-  const [uid,           setUid]           = useState<string | null>(null);
-  const [client,        setClient]        = useState<QueueEntry | null>(null);
-  const [authReady,     setReady]         = useState(false);
+  const [uid, setUid] = useState<string | null>(null);
+  const [client, setClient] = useState<QueueEntry | null>(null);
+  const [authReady, setReady] = useState(false);
   // null = query not yet returned (avoids false-positive orange trigger on initial render)
   const [positionAhead, setPositionAhead] = useState<number | null>(null);
 
-  const standRef   = doc(db, 'stands', STAND_ID || '__no_stand__');
+  const standRef = doc(db, 'stands', STAND_ID || '__no_stand__');
   const historyCol = collection(db, 'stands', STAND_ID || '__no_stand__', 'history');
 
   // ─── Anonymous auth ────────────────────────────────────────────
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      if (user) { setUid(user.uid); }
-      else      { const c = await signInAnonymously(auth); setUid(c.user.uid); }
+      if (user) {
+        setUid(user.uid);
+      } else {
+        const c = await signInAnonymously(auth);
+        setUid(c.user.uid);
+      }
       setReady(true);
     });
     return unsub;
@@ -78,8 +98,10 @@ export function useClientSession(
 
   // ─── Live position: active clients ahead of me ────────────────
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!uid || !client?.queue_position) { setPositionAhead(null); return; }
+    if (!uid || !client?.queue_position) {
+      setPositionAhead(null);
+      return;
+    }
     const myPos = client.queue_position;
     // Fix #1: filter by stand_id to support multi-stand deployments
     const q = query(
@@ -89,7 +111,7 @@ export function useClientSession(
     );
     return onSnapshot(q, (snap) => {
       const ahead = snap.docs.filter(
-        d => d.id !== uid && (d.data().queue_position ?? 0) < myPos
+        (d) => d.id !== uid && (d.data().queue_position ?? 0) < myPos,
       ).length;
       setPositionAhead(ahead);
     });
@@ -102,12 +124,12 @@ export function useClientSession(
   useEffect(() => {
     if (!uid || !client || client.status !== 'waiting' || client.called_at) return;
     if (positionAhead === null) return;
-    const minPerPerson     = stand?.min_per_person ?? 3;
-    const callAheadMin     = stand?.call_ahead_min ?? CALL_AHEAD_MIN_DEFAULT;
+    const minPerPerson = stand?.min_per_person ?? 3;
+    const callAheadMin = stand?.call_ahead_min ?? CALL_AHEAD_MIN_DEFAULT;
     const estimatedWaitMin = positionAhead * minPerPerson;
     if (estimatedWaitMin <= callAheadMin * CALL_BUFFER_FACTOR) {
       updateDoc(doc(db, 'queue', uid), {
-        status:    'orange',
+        status: 'orange',
         called_at: serverTimestamp(),
       });
     }
@@ -117,28 +139,31 @@ export function useClientSession(
   // On completed service: uses a transaction to atomically read the current EMA,
   // compute the new blend, and write history + stand update together.
   // On other exits: simple batch (no stand update needed beyond optional rating).
-  async function writeHistory(reason: ExitReason, currentClient: QueueEntry | null, ratingData?: RatingData) {
+  async function writeHistory(
+    reason: ExitReason,
+    currentClient: QueueEntry | null,
+    ratingData?: RatingData,
+  ) {
     const c = currentClient || client;
     if (!uid || !c) return;
     const nowMs = Date.now();
     const record: Record<string, unknown> = {
       uid,
-      exit_reason:  reason,
-      joined_at:    c.timestamp  ?? null,
-      called_at:    c.called_at  ?? null,
-      claimed_at:   c.claimed_at ?? null,
-      done_at:      serverTimestamp(),
-      delay_used:   c.delay_used ?? false,
+      exit_reason: reason,
+      joined_at: c.timestamp ?? null,
+      called_at: c.called_at ?? null,
+      claimed_at: c.claimed_at ?? null,
+      done_at: serverTimestamp(),
+      delay_used: c.delay_used ?? false,
     };
     if (ratingData) {
-      record.rating   = ratingData.rating;
+      record.rating = ratingData.rating;
       record.feedback = ratingData.feedback ?? '';
     }
     try {
       if (c.called_at && c.timestamp)
         record.wait_ms = c.called_at.toMillis() - c.timestamp.toMillis();
-      if (c.claimed_at)
-        record.service_ms = nowMs - c.claimed_at.toMillis();
+      if (c.claimed_at) record.service_ms = nowMs - c.claimed_at.toMillis();
     } catch (_) {}
 
     const serviceMsValue = record.service_ms as number | undefined;
@@ -150,24 +175,26 @@ export function useClientSession(
       await runTransaction(db, async (tx) => {
         const standSnap = await tx.get(standRef);
         const d = standSnap.data() ?? {};
-        const prevEma  = (d.service_ms_ema as number | undefined) ?? serviceMsValue!;
-        const count    = ((d.service_count as number | undefined) ?? 0) + 1;
-        const newEma   = EMA_ALPHA * serviceMsValue! + (1 - EMA_ALPHA) * prevEma;
-        const emaMins  = newEma / 60_000;
+        const prevEma = (d.service_ms_ema as number | undefined) ?? serviceMsValue!;
+        const count = ((d.service_count as number | undefined) ?? 0) + 1;
+        const newEma = EMA_ALPHA * serviceMsValue! + (1 - EMA_ALPHA) * prevEma;
+        const emaMins = newEma / 60_000;
         const sliderBase = calcMinPerPerson(
-          (d.flow_rate   as number | undefined) ?? FLOW_RATE_DEFAULT,
-          (d.flow_slow   as number | undefined) ?? FLOW_SLOW_DEFAULT,
+          (d.flow_rate as number | undefined) ?? FLOW_RATE_DEFAULT,
+          (d.flow_slow as number | undefined) ?? FLOW_SLOW_DEFAULT,
           (d.flow_sprint as number | undefined) ?? FLOW_SPRINT_DEFAULT,
         );
         // Weight increases from 0 → 80 % over the first 30 services, then stays at 80 %.
-        const weight          = Math.min(0.8, count / 30);
-        const newMinPerPerson = +(( weight * emaMins + (1 - weight) * sliderBase).toFixed(2));
+        const weight = Math.min(0.8, count / 30);
+        const newMinPerPerson = +(weight * emaMins + (1 - weight) * sliderBase).toFixed(2);
         tx.set(histRef, record);
         tx.update(standRef, {
-          service_ms_ema:  newEma,
-          service_count:   count,
-          min_per_person:  newMinPerPerson,
-          ...(ratingData ? { rating_count: increment(1), rating_sum: increment(ratingData.rating) } : {}),
+          service_ms_ema: newEma,
+          service_count: count,
+          min_per_person: newMinPerPerson,
+          ...(ratingData
+            ? { rating_count: increment(1), rating_sum: increment(ratingData.rating) }
+            : {}),
         });
       });
     } else {
@@ -176,7 +203,7 @@ export function useClientSession(
       if (ratingData) {
         batch.update(standRef, {
           rating_count: increment(1),
-          rating_sum:   increment(ratingData.rating),
+          rating_sum: increment(ratingData.rating),
         });
       }
       await batch.commit();
@@ -191,22 +218,26 @@ export function useClientSession(
     if (!uid || !stand || !stand.is_open || stand.is_paused) return;
     if (stand.max_queue_size != null && stand.max_queue_size > 0) {
       const snap = await getDocs(
-        query(collection(db, 'queue'), where('stand_id', '==', STAND_ID), where('status', 'in', ['waiting', 'orange', 'claimed']))
+        query(
+          collection(db, 'queue'),
+          where('stand_id', '==', STAND_ID),
+          where('status', 'in', ['waiting', 'orange', 'claimed']),
+        ),
       );
       if (snap.size >= stand.max_queue_size) return;
     }
     await runTransaction(db, async (tx) => {
       const standSnap = await tx.get(standRef);
-      const position  = ((standSnap.data()?.queue_counter ?? 0) as number) + 1;
+      const position = ((standSnap.data()?.queue_counter ?? 0) as number) + 1;
       tx.update(standRef, { queue_counter: position });
       tx.set(doc(db, 'queue', uid), {
         uid,
-        stand_id:               STAND_ID,
-        queue_position:         position,
-        status:                 'waiting',
+        stand_id: STAND_ID,
+        queue_position: position,
+        status: 'waiting',
         has_confirmed_presence: false,
-        delay_used:             false,
-        timestamp:              serverTimestamp(),
+        delay_used: false,
+        timestamp: serverTimestamp(),
       });
     });
   }, [uid, stand]);
@@ -216,7 +247,12 @@ export function useClientSession(
     if (!uid || !client || client.delay_used) return;
     if (stand?.max_delayed != null && stand.max_delayed > 0) {
       const delaySnap = await getDocs(
-        query(collection(db, 'queue'), where('stand_id', '==', STAND_ID), where('delay_used', '==', true), where('status', 'in', ['waiting', 'orange', 'claimed']))
+        query(
+          collection(db, 'queue'),
+          where('stand_id', '==', STAND_ID),
+          where('delay_used', '==', true),
+          where('status', 'in', ['waiting', 'orange', 'claimed']),
+        ),
       );
       if (delaySnap.size >= stand.max_delayed) return;
     }
@@ -226,37 +262,51 @@ export function useClientSession(
         collection(db, 'queue'),
         where('stand_id', '==', STAND_ID),
         where('status', 'in', ['waiting', 'orange', 'claimed']),
-      )
+      ),
     );
     const maxPos = qSnap.docs.reduce((m, d) => Math.max(m, d.data().queue_position ?? 0), 0);
     await updateDoc(doc(db, 'queue', uid), {
       queue_position: maxPos + WAVE_SIZE,
-      delay_used:     true,
-      status:         'waiting',
-      called_at:      deleteField(),
+      delay_used: true,
+      status: 'waiting',
+      called_at: deleteField(),
     });
   }, [uid, client, stand]);
 
-  const leave = useCallback(async (reason: ExitReason = 'left_voluntarily') => {
-    if (!uid) return;
-    try { await writeHistory(reason, client); } catch (e) { console.warn('writeHistory:', e); }
-    await deleteDoc(doc(db, 'queue', uid));
-  }, [uid, client]);
+  const leave = useCallback(
+    async (reason: ExitReason = 'left_voluntarily') => {
+      if (!uid) return;
+      try {
+        await writeHistory(reason, client);
+      } catch (e) {
+        console.warn('writeHistory:', e);
+      }
+      await deleteDoc(doc(db, 'queue', uid));
+    },
+    [uid, client],
+  );
 
   const confirmPresence = useCallback(async () => {
     if (!uid) return;
     await updateDoc(doc(db, 'queue', uid), {
       has_confirmed_presence: true,
-      status:                 'claimed',
-      claimed_at:             serverTimestamp(),
+      status: 'claimed',
+      claimed_at: serverTimestamp(),
     });
   }, [uid]);
 
-  const done = useCallback(async (reason: ExitReason = 'completed', ratingData?: RatingData) => {
-    if (!uid) return;
-    try { await writeHistory(reason, client, ratingData); } catch (e) { console.warn('writeHistory:', e); }
-    await deleteDoc(doc(db, 'queue', uid));
-  }, [uid, client]);
+  const done = useCallback(
+    async (reason: ExitReason = 'completed', ratingData?: RatingData) => {
+      if (!uid) return;
+      try {
+        await writeHistory(reason, client, ratingData);
+      } catch (e) {
+        console.warn('writeHistory:', e);
+      }
+      await deleteDoc(doc(db, 'queue', uid));
+    },
+    [uid, client],
+  );
 
   const extend = useCallback(async () => {
     if (!uid) return;
@@ -269,11 +319,11 @@ export function useClientSession(
   }, [uid]);
 
   // ─── Derived values ────────────────────────────────────────────
-  const step           = deriveStep(client, authReady);
-  const minPerPerson   = stand?.min_per_person ?? 2.5;
-  const resolvedAhead  = positionAhead ?? 0;
+  const step = deriveStep(client, authReady);
+  const minPerPerson = stand?.min_per_person ?? 2.5;
+  const resolvedAhead = positionAhead ?? 0;
   // Wait = people ahead × time per person (updates in real time)
-  const estimatedMin   = Math.max(1, Math.round(resolvedAhead * minPerPerson));
+  const estimatedMin = Math.max(1, Math.round(resolvedAhead * minPerPerson));
   const waitingStatus: 'red' | 'orange' = estimatedMin < 5 ? 'orange' : 'red';
 
   return [
@@ -285,9 +335,9 @@ export function useClientSession(
 }
 
 function deriveStep(client: QueueEntry | null, authReady: boolean): ClientStep {
-  if (!authReady)                          return 'loading';
+  if (!authReady) return 'loading';
   if (!client || client.status === 'done') return 'splash';
-  if (client.status === 'claimed')         return 'validation';
-  if (client.status === 'orange')          return 'checkin';
+  if (client.status === 'claimed') return 'validation';
+  if (client.status === 'orange') return 'checkin';
   return 'waiting';
 }

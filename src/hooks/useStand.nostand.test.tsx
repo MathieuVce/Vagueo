@@ -36,25 +36,33 @@ describe('useStand — sans STAND_ID', () => {
 
   it('togglePause is a no-op (stand is null)', async () => {
     const { result } = renderHook(() => useStand());
-    await act(async () => { await result.current[1].togglePause(); });
+    await act(async () => {
+      await result.current[1].togglePause();
+    });
     expect(updateDoc).not.toHaveBeenCalled();
   });
 
   it('toggleOpen is a no-op (stand is null)', async () => {
     const { result } = renderHook(() => useStand());
-    await act(async () => { await result.current[1].toggleOpen(); });
+    await act(async () => {
+      await result.current[1].toggleOpen();
+    });
     expect(updateDoc).not.toHaveBeenCalled();
   });
 
   it('setFlowRate is a no-op (stand is null)', async () => {
     const { result } = renderHook(() => useStand());
-    await act(async () => { await result.current[1].setFlowRate(1); });
+    await act(async () => {
+      await result.current[1].setFlowRate(1);
+    });
     expect(updateDoc).not.toHaveBeenCalled();
   });
 
   it('claimStand is a no-op (stand is null)', async () => {
     const { result } = renderHook(() => useStand());
-    await act(async () => { await result.current[1].claimStand('uid', 'email@test.com'); });
+    await act(async () => {
+      await result.current[1].claimStand('uid', 'email@test.com');
+    });
     expect(updateDoc).not.toHaveBeenCalled();
   });
 });

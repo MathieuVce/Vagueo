@@ -71,7 +71,9 @@ describe('ScreenVendorSetup', () => {
     render(<ScreenVendorSetup stand={mockStand} onSave={() => {}} isEditing={true} />);
     fireEvent.error(screen.getByRole('img'));
     expect(screen.getByText(/Image inaccessible/i)).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText(/https:\/\//i), { target: { value: 'https://new.com/img.png' } });
+    fireEvent.change(screen.getByPlaceholderText(/https:\/\//i), {
+      target: { value: 'https://new.com/img.png' },
+    });
     expect(screen.queryByText(/Image inaccessible/i)).not.toBeInTheDocument();
   });
 
@@ -79,7 +81,9 @@ describe('ScreenVendorSetup', () => {
     render(<ScreenVendorSetup stand={{ ...mockStand, logo_url: '' }} onSave={() => {}} />);
     const input = screen.getByPlaceholderText(/https:\/\//i);
     const encoded = encodeURIComponent('https://real-image.com/photo.jpg');
-    fireEvent.change(input, { target: { value: `https://www.google.com/imgres?imgurl=${encoded}` } });
+    fireEvent.change(input, {
+      target: { value: `https://www.google.com/imgres?imgurl=${encoded}` },
+    });
     expect((input as HTMLInputElement).value).toBe('https://real-image.com/photo.jpg');
   });
 
@@ -147,22 +151,30 @@ describe('ScreenVendorSetup', () => {
   it('calls onSave with form data when submitted', async () => {
     const handleSave = vi.fn();
     render(<ScreenVendorSetup stand={mockStand} onSave={handleSave} isEditing={true} />);
-    await act(async () => { fireEvent.click(screen.getByText(/Sauvegarder/i)); });
-    expect(handleSave).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'Test Stand',
-      address: 'B12',
-      isOpen: true,
-    }));
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Sauvegarder/i));
+    });
+    expect(handleSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Test Stand',
+        address: 'B12',
+        isOpen: true,
+      }),
+    );
   });
 
   it('passes null limits when unlimited is selected', async () => {
     const handleSave = vi.fn();
     render(<ScreenVendorSetup stand={standNoLimits} onSave={handleSave} isEditing={false} />);
-    await act(async () => { fireEvent.click(screen.getByText(/Créer mon stand/i)); });
-    expect(handleSave).toHaveBeenCalledWith(expect.objectContaining({
-      maxQueueSize: null,
-      maxDelayed:   null,
-    }));
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Créer mon stand/i));
+    });
+    expect(handleSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        maxQueueSize: null,
+        maxDelayed: null,
+      }),
+    );
   });
 
   // ─── Flow rate clamping ────────────────────────────────────────

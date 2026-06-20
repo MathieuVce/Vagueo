@@ -16,8 +16,13 @@ describe('ClientApp', () => {
   const mockClient: any = { status: 'waiting', delay_used: false };
   const mockDerived: any = { estimatedMin: 12, waitingStatus: 'red', positionAhead: 0 };
   const mockActions: any = {
-    join: vi.fn(), leave: vi.fn(), confirmPresence: vi.fn(),
-    done: vi.fn(), requestDelay: vi.fn(), extend: vi.fn(), restart: vi.fn(),
+    join: vi.fn(),
+    leave: vi.fn(),
+    confirmPresence: vi.fn(),
+    done: vi.fn(),
+    requestDelay: vi.fn(),
+    extend: vi.fn(),
+    restart: vi.fn(),
   };
 
   beforeEach(() => {
@@ -60,7 +65,9 @@ describe('ClientApp', () => {
   it('renders ScreenValidation when step is validation', () => {
     (useClientSession as any).mockReturnValue([
       { ...mockClient, claimed_at: { toMillis: () => Date.now() } },
-      'validation', mockDerived, mockActions,
+      'validation',
+      mockDerived,
+      mockActions,
     ]);
     render(<ClientApp />);
     expect(screen.getByText(/Montrez cet écran au vendeur/i)).toBeInTheDocument();
@@ -92,7 +99,9 @@ describe('ClientApp', () => {
     (useStand as any).mockReturnValue([{ ...mockStand, is_paused: true }, {}]);
     (useClientSession as any).mockReturnValue([
       { ...mockClient, claimed_at: { toMillis: () => Date.now() } },
-      'validation', mockDerived, mockActions,
+      'validation',
+      mockDerived,
+      mockActions,
     ]);
     render(<ClientApp />);
     expect(screen.getByText(/En pause/i)).toBeInTheDocument();
@@ -111,10 +120,16 @@ describe('ClientApp', () => {
     vi.useFakeTimers();
     (useClientSession as any).mockReturnValue([
       { ...mockClient, called_at: { toMillis: () => 1000 } },
-      'checkin', mockDerived, mockActions,
+      'checkin',
+      mockDerived,
+      mockActions,
     ]);
-    await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(181_000); });
+    await act(async () => {
+      render(<ClientApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(181_000);
+    });
     expect(screen.getByText(/Vous êtes encore là/i)).toBeInTheDocument();
   });
 
@@ -122,10 +137,16 @@ describe('ClientApp', () => {
     vi.useFakeTimers();
     (useClientSession as any).mockReturnValue([
       { ...mockClient, called_at: { toMillis: () => 1000 }, delay_used: false },
-      'checkin', mockDerived, mockActions,
+      'checkin',
+      mockDerived,
+      mockActions,
     ]);
-    await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(181_000); });
+    await act(async () => {
+      render(<ClientApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(181_000);
+    });
     fireEvent.click(screen.getAllByText(/Décaler/i)[0]);
     expect(mockActions.requestDelay).toHaveBeenCalled();
   });
@@ -134,10 +155,16 @@ describe('ClientApp', () => {
     vi.useFakeTimers();
     (useClientSession as any).mockReturnValue([
       { ...mockClient, called_at: { toMillis: () => 1000 }, delay_used: true },
-      'checkin', mockDerived, mockActions,
+      'checkin',
+      mockDerived,
+      mockActions,
     ]);
-    await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(181_000); });
+    await act(async () => {
+      render(<ClientApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(181_000);
+    });
     fireEvent.click(screen.getByRole('button', { name: /Quitter la file/i }));
     expect(mockActions.leave).toHaveBeenCalledWith('left_checkin');
   });
@@ -150,10 +177,16 @@ describe('ClientApp', () => {
     vi.useFakeTimers();
     (useClientSession as any).mockReturnValue([
       { ...mockClient, claimed_at: { toMillis: () => 1000 } },
-      'validation', mockDerived, mockActions,
+      'validation',
+      mockDerived,
+      mockActions,
     ]);
-    await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(901_000); });
+    await act(async () => {
+      render(<ClientApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(901_000);
+    });
     expect(screen.getByText(/Toujours en cours/i)).toBeInTheDocument();
   });
 
@@ -161,10 +194,16 @@ describe('ClientApp', () => {
     vi.useFakeTimers();
     (useClientSession as any).mockReturnValue([
       { ...mockClient, claimed_at: { toMillis: () => 1000 } },
-      'validation', mockDerived, mockActions,
+      'validation',
+      mockDerived,
+      mockActions,
     ]);
-    await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(901_000); });
+    await act(async () => {
+      render(<ClientApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(901_000);
+    });
     fireEvent.click(screen.getByText(/Prolonger/i));
     expect(mockActions.extend).toHaveBeenCalled();
   });
@@ -174,7 +213,9 @@ describe('ClientApp', () => {
   it('shows ModalRating when done button clicked in validation', () => {
     (useClientSession as any).mockReturnValue([
       { ...mockClient, claimed_at: { toMillis: () => Date.now() } },
-      'validation', mockDerived, mockActions,
+      'validation',
+      mockDerived,
+      mockActions,
     ]);
     render(<ClientApp />);
     fireEvent.click(screen.getByText(/C'est fait/i));
@@ -184,7 +225,9 @@ describe('ClientApp', () => {
   it('calls done with completed when skipping rating', () => {
     (useClientSession as any).mockReturnValue([
       { ...mockClient, claimed_at: { toMillis: () => Date.now() } },
-      'validation', mockDerived, mockActions,
+      'validation',
+      mockDerived,
+      mockActions,
     ]);
     render(<ClientApp />);
     fireEvent.click(screen.getByText(/C'est fait/i));
@@ -196,23 +239,35 @@ describe('ClientApp', () => {
     vi.useFakeTimers();
     (useClientSession as any).mockReturnValue([
       { ...mockClient, called_at: { toMillis: () => 1000 }, delay_used: false },
-      'checkin', mockDerived, mockActions,
+      'checkin',
+      mockDerived,
+      mockActions,
     ]);
-    await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(181_000); });
+    await act(async () => {
+      render(<ClientApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(181_000);
+    });
     // delay_used=false: primary="Décaler…", secondary="Quitter la file" (leave button)
     fireEvent.click(screen.getByRole('button', { name: /Quitter la file/i }));
     expect(mockActions.leave).toHaveBeenCalledWith('left_checkin');
   });
 
-  it('shows ModalRating when J\'ai fini clicked in service modal', async () => {
+  it("shows ModalRating when J'ai fini clicked in service modal", async () => {
     vi.useFakeTimers();
     (useClientSession as any).mockReturnValue([
       { ...mockClient, claimed_at: { toMillis: () => 1000 } },
-      'validation', mockDerived, mockActions,
+      'validation',
+      mockDerived,
+      mockActions,
     ]);
-    await act(async () => { render(<ClientApp />); });
-    await act(async () => { vi.advanceTimersByTime(901_000); });
+    await act(async () => {
+      render(<ClientApp />);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(901_000);
+    });
     fireEvent.click(screen.getByText(/J'ai fini, merci/));
     expect(screen.getByText(/Votre avis compte/i)).toBeInTheDocument();
   });
@@ -220,7 +275,9 @@ describe('ClientApp', () => {
   it('calls done with rating and feedback when ModalRating submitted', () => {
     (useClientSession as any).mockReturnValue([
       { ...mockClient, claimed_at: { toMillis: () => Date.now() } },
-      'validation', mockDerived, mockActions,
+      'validation',
+      mockDerived,
+      mockActions,
     ]);
     render(<ClientApp />);
     fireEvent.click(screen.getByText(/C'est fait/i));

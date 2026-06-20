@@ -5,21 +5,30 @@ import { onSnapshot } from 'firebase/firestore';
 
 function setupSnapshot() {
   let successCb: ((snap: any) => void) | undefined;
-  let errorCb:   ((err: Error) => void)   | undefined;
+  let errorCb: ((err: Error) => void) | undefined;
   (onSnapshot as any).mockImplementation((_q: any, ok: any, err: any) => {
     successCb = ok;
-    errorCb   = err;
+    errorCb = err;
     return () => {};
   });
   return {
-    fire: (docs: any[]) => act(async () => { successCb?.({ docs }); }),
-    fail: (msg: string) => act(async () => { errorCb?.(new Error(msg)); }),
+    fire: (docs: any[]) =>
+      act(async () => {
+        successCb?.({ docs });
+      }),
+    fail: (msg: string) =>
+      act(async () => {
+        errorCb?.(new Error(msg));
+      }),
   };
 }
 
 const mockWin = {
   document: { write: vi.fn(), close: vi.fn() },
-  focus: vi.fn(), print: vi.fn(), close: vi.fn(), onafterprint: null as any,
+  focus: vi.fn(),
+  print: vi.fn(),
+  close: vi.fn(),
+  onafterprint: null as any,
 };
 
 describe('ScreenStats', () => {
@@ -110,7 +119,15 @@ describe('ScreenStats', () => {
   // ─── Full stats ────────────────────────────────────────────────
 
   const mockDocs = [
-    { id: '1', data: () => ({ exit_reason: 'completed', wait_ms: 120000, service_ms: 60000, delay_used: false }) },
+    {
+      id: '1',
+      data: () => ({
+        exit_reason: 'completed',
+        wait_ms: 120000,
+        service_ms: 60000,
+        delay_used: false,
+      }),
+    },
     { id: '2', data: () => ({ exit_reason: 'left_waiting', delay_used: true }) },
   ];
 
@@ -232,13 +249,15 @@ describe('ScreenStats', () => {
   it('shows hourly chart for today period when events have done_at.toDate', async () => {
     const { fire } = setupSnapshot();
     render(<ScreenStats onClose={() => {}} />);
-    await fire([{
-      id: '1',
-      data: () => ({
-        exit_reason: 'completed',
-        done_at: { toDate: () => new Date(2024, 0, 1, 10, 0, 0), toMillis: () => 1000 },
-      }),
-    }]);
+    await fire([
+      {
+        id: '1',
+        data: () => ({
+          exit_reason: 'completed',
+          done_at: { toDate: () => new Date(2024, 0, 1, 10, 0, 0), toMillis: () => 1000 },
+        }),
+      },
+    ]);
     expect(screen.getByText(/Passages par heure/i)).toBeInTheDocument();
   });
 

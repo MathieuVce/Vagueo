@@ -8,9 +8,38 @@ vi.mock('../hooks/useVendorAuth');
 vi.mock('qrcode.react', () => ({ QRCodeSVG: () => <svg data-testid="qrcode" /> }));
 
 // Shared stand fixture
-const stand1 = { id: 's1', data: () => ({ name: 'Stand Alpha', is_open: true, is_paused: false, queue_counter: 3, flow_rate: 3 }) };
-const stand2 = { id: 's2', data: () => ({ name: 'Stand Beta',  is_open: false, is_paused: false, queue_counter: 0, flow_rate: 3 }) };
-const claimedStand = { id: 'sc', data: () => ({ name: 'Stand Revendiqué', vendor_uid: 'uid123', vendor_email: 'v@test.com', is_open: false, is_paused: false, queue_counter: 0, flow_rate: 3 }) };
+const stand1 = {
+  id: 's1',
+  data: () => ({
+    name: 'Stand Alpha',
+    is_open: true,
+    is_paused: false,
+    queue_counter: 3,
+    flow_rate: 3,
+  }),
+};
+const stand2 = {
+  id: 's2',
+  data: () => ({
+    name: 'Stand Beta',
+    is_open: false,
+    is_paused: false,
+    queue_counter: 0,
+    flow_rate: 3,
+  }),
+};
+const claimedStand = {
+  id: 'sc',
+  data: () => ({
+    name: 'Stand Revendiqué',
+    vendor_uid: 'uid123',
+    vendor_email: 'v@test.com',
+    is_open: false,
+    is_paused: false,
+    queue_counter: 0,
+    flow_rate: 3,
+  }),
+};
 
 function mockSnapshotWith(docs: any[]) {
   (onSnapshot as any).mockImplementation((_ref: any, cb: any) => {
@@ -38,7 +67,11 @@ describe('AdminApp', () => {
   // ─── Auth states ───────────────────────────────────────────────
 
   it('shows loading spinner when auth is loading', () => {
-    (useVendorAuthHook.useVendorAuth as any).mockReturnValue({ ...mockAuth, loading: true, user: null });
+    (useVendorAuthHook.useVendorAuth as any).mockReturnValue({
+      ...mockAuth,
+      loading: true,
+      user: null,
+    });
     const { container } = render(<AdminApp />);
     expect(container.firstChild).toBeTruthy();
     expect(screen.queryByText(/Stands/i)).not.toBeInTheDocument();
@@ -51,7 +84,10 @@ describe('AdminApp', () => {
   });
 
   it('shows AdminLogin for anonymous user', () => {
-    (useVendorAuthHook.useVendorAuth as any).mockReturnValue({ ...mockAuth, user: { isAnonymous: true } });
+    (useVendorAuthHook.useVendorAuth as any).mockReturnValue({
+      ...mockAuth,
+      user: { isAnonymous: true },
+    });
     render(<AdminApp />);
     expect(screen.getByText(/Connexion avec Google/i)).toBeInTheDocument();
   });
@@ -64,14 +100,19 @@ describe('AdminApp', () => {
   });
 
   it('shows error message in AdminLogin', () => {
-    (useVendorAuthHook.useVendorAuth as any).mockReturnValue({ ...mockAuth, user: null, error: 'Connexion refusée.' });
+    (useVendorAuthHook.useVendorAuth as any).mockReturnValue({
+      ...mockAuth,
+      user: null,
+      error: 'Connexion refusée.',
+    });
     render(<AdminApp />);
     expect(screen.getByText(/Connexion refusée/i)).toBeInTheDocument();
   });
 
   it('shows access denied when email does not match VITE_ADMIN_EMAIL', () => {
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({
-      ...mockAuth, user: { uid: 'x', email: 'other@example.com', isAnonymous: false },
+      ...mockAuth,
+      user: { uid: 'x', email: 'other@example.com', isAnonymous: false },
     });
     render(<AdminApp />);
     expect(screen.getByText(/Accès refusé/i)).toBeInTheDocument();
@@ -79,7 +120,8 @@ describe('AdminApp', () => {
 
   it('calls signOut from access denied screen', () => {
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({
-      ...mockAuth, user: { uid: 'x', email: 'other@example.com', isAnonymous: false },
+      ...mockAuth,
+      user: { uid: 'x', email: 'other@example.com', isAnonymous: false },
     });
     render(<AdminApp />);
     fireEvent.click(screen.getByText(/Se déconnecter/i));
@@ -101,46 +143,71 @@ describe('AdminApp', () => {
 
   it('renders stand list', async () => {
     let callback: any;
-    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => { callback = cb; return () => {}; });
+    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => {
+      callback = cb;
+      return () => {};
+    });
     render(<AdminApp />);
-    await act(async () => { callback({ docs: [stand1, stand2] }); });
+    await act(async () => {
+      callback({ docs: [stand1, stand2] });
+    });
     expect(screen.getByText('Stand Alpha')).toBeInTheDocument();
     expect(screen.getByText('Stand Beta')).toBeInTheDocument();
   });
 
   it('shows search box when more than 3 stands', async () => {
-    const manyStands = [1, 2, 3, 4].map(i => ({
-      id: `s${i}`, data: () => ({ name: `Stand ${i}`, is_open: false, is_paused: false, flow_rate: 3 }),
+    const manyStands = [1, 2, 3, 4].map((i) => ({
+      id: `s${i}`,
+      data: () => ({ name: `Stand ${i}`, is_open: false, is_paused: false, flow_rate: 3 }),
     }));
     let callback: any;
-    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => { callback = cb; return () => {}; });
+    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => {
+      callback = cb;
+      return () => {};
+    });
     render(<AdminApp />);
-    await act(async () => { callback({ docs: manyStands }); });
+    await act(async () => {
+      callback({ docs: manyStands });
+    });
     expect(screen.getByPlaceholderText(/Rechercher/i)).toBeInTheDocument();
   });
 
   it('filters stands by search query', async () => {
-    const manyStands = [1, 2, 3, 4].map(i => ({
-      id: `s${i}`, data: () => ({ name: `Stand ${i}`, is_open: false, is_paused: false, flow_rate: 3 }),
+    const manyStands = [1, 2, 3, 4].map((i) => ({
+      id: `s${i}`,
+      data: () => ({ name: `Stand ${i}`, is_open: false, is_paused: false, flow_rate: 3 }),
     }));
     let callback: any;
-    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => { callback = cb; return () => {}; });
+    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => {
+      callback = cb;
+      return () => {};
+    });
     render(<AdminApp />);
-    await act(async () => { callback({ docs: manyStands }); });
+    await act(async () => {
+      callback({ docs: manyStands });
+    });
     fireEvent.change(screen.getByPlaceholderText(/Rechercher/i), { target: { value: 'Stand 2' } });
     expect(screen.getByText('Stand 2')).toBeInTheDocument();
     expect(screen.queryByText('Stand 1')).not.toBeInTheDocument();
   });
 
   it('shows "Aucun résultat" when search has no match', async () => {
-    const manyStands = [1, 2, 3, 4].map(i => ({
-      id: `s${i}`, data: () => ({ name: `Stand ${i}`, is_open: false, is_paused: false, flow_rate: 3 }),
+    const manyStands = [1, 2, 3, 4].map((i) => ({
+      id: `s${i}`,
+      data: () => ({ name: `Stand ${i}`, is_open: false, is_paused: false, flow_rate: 3 }),
     }));
     let callback: any;
-    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => { callback = cb; return () => {}; });
+    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => {
+      callback = cb;
+      return () => {};
+    });
     render(<AdminApp />);
-    await act(async () => { callback({ docs: manyStands }); });
-    fireEvent.change(screen.getByPlaceholderText(/Rechercher/i), { target: { value: 'zzznomatch' } });
+    await act(async () => {
+      callback({ docs: manyStands });
+    });
+    fireEvent.change(screen.getByPlaceholderText(/Rechercher/i), {
+      target: { value: 'zzznomatch' },
+    });
     expect(screen.getByText(/Aucun résultat/i)).toBeInTheDocument();
   });
 
@@ -161,33 +228,51 @@ describe('AdminApp', () => {
   it('create button is enabled after typing a name and email', () => {
     render(<AdminApp />);
     fireEvent.click(screen.getByRole('button', { name: /\+ Nouveau stand/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), { target: { value: 'Mon Stand' } });
-    fireEvent.change(screen.getByPlaceholderText(/vendeur@gmail\.com/i), { target: { value: 'v@test.com' } });
+    fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), {
+      target: { value: 'Mon Stand' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/vendeur@gmail\.com/i), {
+      target: { value: 'v@test.com' },
+    });
     expect(screen.getByRole('button', { name: /Créer le stand/i })).not.toBeDisabled();
   });
 
   it('create button stays disabled with name but no email', () => {
     render(<AdminApp />);
     fireEvent.click(screen.getByRole('button', { name: /\+ Nouveau stand/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), { target: { value: 'Mon Stand' } });
+    fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), {
+      target: { value: 'Mon Stand' },
+    });
     expect(screen.getByRole('button', { name: /Créer le stand/i })).toBeDisabled();
   });
 
   it('calls addDoc and shows toast after creating stand', async () => {
     render(<AdminApp />);
     fireEvent.click(screen.getByRole('button', { name: /\+ Nouveau stand/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), { target: { value: 'Nouveau' } });
-    fireEvent.change(screen.getByPlaceholderText(/vendeur@gmail\.com/i), { target: { value: 'v@test.com' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Créer le stand/i })); });
+    fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), {
+      target: { value: 'Nouveau' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/vendeur@gmail\.com/i), {
+      target: { value: 'v@test.com' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Créer le stand/i }));
+    });
     expect(screen.getByText('mock-id')).toBeInTheDocument();
   });
 
   it('dismisses new stand toast', async () => {
     render(<AdminApp />);
     fireEvent.click(screen.getByRole('button', { name: /\+ Nouveau stand/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), { target: { value: 'Nouveau' } });
-    fireEvent.change(screen.getByPlaceholderText(/vendeur@gmail\.com/i), { target: { value: 'v@test.com' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Créer le stand/i })); });
+    fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), {
+      target: { value: 'Nouveau' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/vendeur@gmail\.com/i), {
+      target: { value: 'v@test.com' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Créer le stand/i }));
+    });
     fireEvent.click(screen.getByRole('button', { name: '×' }));
     expect(screen.queryByText('mock-id')).not.toBeInTheDocument();
   });
@@ -203,9 +288,14 @@ describe('AdminApp', () => {
 
   async function renderWithStand(standDoc = stand1) {
     let callback: any;
-    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => { callback = cb; return () => {}; });
+    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => {
+      callback = cb;
+      return () => {};
+    });
     render(<AdminApp />);
-    await act(async () => { callback({ docs: [standDoc] }); });
+    await act(async () => {
+      callback({ docs: [standDoc] });
+    });
     fireEvent.click(screen.getByRole('button', { name: /Modifier/i }));
   }
 
@@ -223,7 +313,9 @@ describe('AdminApp', () => {
 
   it('calls updateDoc when saving from StandEditor', async () => {
     await renderWithStand();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i })); });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
+    });
     expect(updateDoc).toHaveBeenCalled();
   });
 
@@ -231,7 +323,9 @@ describe('AdminApp', () => {
     await renderWithStand();
     fireEvent.click(screen.getByText(/Supprimer ce stand/i));
     expect(screen.getByText(/Confirmer la suppression/i)).toBeInTheDocument();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Supprimer$/i })); });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Supprimer$/i }));
+    });
     expect(deleteDoc).toHaveBeenCalled();
   });
 
@@ -246,7 +340,9 @@ describe('AdminApp', () => {
     await renderWithStand(claimedStand);
     fireEvent.click(screen.getByText('Délier'));
     expect(screen.getByRole('button', { name: /Confirmer/i })).toBeInTheDocument();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Confirmer/i })); });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Confirmer/i }));
+    });
     expect(updateDoc).toHaveBeenCalled();
   });
 
@@ -272,14 +368,17 @@ describe('AdminApp', () => {
     let callCount = 0;
     (onSnapshot as any).mockImplementation((_ref: any, cb: any) => {
       callCount++;
-      cb(callCount === 1
-        ? { docs: [stand1], size: 1 } // stands list
-        : { docs: [], size: 3 },      // queue: 3 people
+      cb(
+        callCount === 1
+          ? { docs: [stand1], size: 1 } // stands list
+          : { docs: [], size: 3 }, // queue: 3 people
       );
       return () => {};
     });
     render(<AdminApp />);
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Modifier/i })); });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Modifier/i }));
+    });
     expect(screen.getByText(/en file/i)).toBeInTheDocument();
   });
 
@@ -300,34 +399,66 @@ describe('AdminApp', () => {
   it('copies client link to clipboard', async () => {
     Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
     await renderWithStand();
-    await act(async () => { fireEvent.click(screen.getByText(/Copier lien client/i)); });
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Copier lien client/i));
+    });
     expect(navigator.clipboard.writeText).toHaveBeenCalled();
   });
 
   it('shows toast when save throws an error', async () => {
     (updateDoc as any).mockRejectedValueOnce(new Error('Network error'));
     await renderWithStand();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i })); });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
+    });
     expect(screen.getByText('Network error')).toBeInTheDocument();
   });
 
   // ─── StandCard extras ──────────────────────────────────────────
 
   it('shows address on StandCard when present', async () => {
-    const standWithAddr = { id: 'sa', data: () => ({ name: 'Stand A', is_open: false, is_paused: false, flow_rate: 3, address: 'Stand B12' }) };
+    const standWithAddr = {
+      id: 'sa',
+      data: () => ({
+        name: 'Stand A',
+        is_open: false,
+        is_paused: false,
+        flow_rate: 3,
+        address: 'Stand B12',
+      }),
+    };
     let callback: any;
-    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => { callback = cb; return () => {}; });
+    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => {
+      callback = cb;
+      return () => {};
+    });
     render(<AdminApp />);
-    await act(async () => { callback({ docs: [standWithAddr] }); });
+    await act(async () => {
+      callback({ docs: [standWithAddr] });
+    });
     expect(screen.getByText(/Stand B12/)).toBeInTheDocument();
   });
 
   it('shows max queue badge on StandCard when max_queue_size is set', async () => {
-    const standWithMax = { id: 'sm', data: () => ({ name: 'Stand M', is_open: false, is_paused: false, flow_rate: 3, max_queue_size: 25 }) };
+    const standWithMax = {
+      id: 'sm',
+      data: () => ({
+        name: 'Stand M',
+        is_open: false,
+        is_paused: false,
+        flow_rate: 3,
+        max_queue_size: 25,
+      }),
+    };
     let callback: any;
-    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => { callback = cb; return () => {}; });
+    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => {
+      callback = cb;
+      return () => {};
+    });
     render(<AdminApp />);
-    await act(async () => { callback({ docs: [standWithMax] }); });
+    await act(async () => {
+      callback({ docs: [standWithMax] });
+    });
     expect(screen.getByText('max 25')).toBeInTheDocument();
   });
 

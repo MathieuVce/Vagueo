@@ -1,6 +1,14 @@
 import {
-  getDocs, collection, query, where, writeBatch,
-  deleteDoc, doc, runTransaction, serverTimestamp, limit,
+  getDocs,
+  collection,
+  query,
+  where,
+  writeBatch,
+  deleteDoc,
+  doc,
+  runTransaction,
+  serverTimestamp,
+  limit,
 } from 'firebase/firestore';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 import { db, auth } from '../firebase.ts';
@@ -10,18 +18,21 @@ import { STAND_ID } from '../tokens.ts';
 // Fix #4: decomposed out of VendorApp.
 export function useDevHelpers() {
   async function devAddClient() {
-    const fakeUid  = `dev_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const fakeUid = `dev_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const standRef = doc(db, 'stands', STAND_ID);
     await runTransaction(db, async (tx) => {
       const standSnap = await tx.get(standRef);
-      const position  = ((standSnap.data()?.queue_counter ?? 0) as number) + 1;
+      const position = ((standSnap.data()?.queue_counter ?? 0) as number) + 1;
       tx.update(standRef, { queue_counter: position });
       tx.set(doc(db, 'queue', fakeUid), {
-        uid: fakeUid, stand_id: STAND_ID,
+        uid: fakeUid,
+        stand_id: STAND_ID,
         queue_position: position,
         status: 'waiting',
-        has_confirmed_presence: false, delay_used: false,
-        timestamp: serverTimestamp(), _dev: true,
+        has_confirmed_presence: false,
+        delay_used: false,
+        timestamp: serverTimestamp(),
+        _dev: true,
       });
     });
   }
@@ -35,9 +46,12 @@ export function useDevHelpers() {
         where('_dev', '==', true),
         where('status', 'in', ['waiting', 'orange', 'claimed']),
         limit(1),
-      )
+      ),
     );
-    if (!devSnap.empty) { await deleteDoc(devSnap.docs[0].ref); return; }
+    if (!devSnap.empty) {
+      await deleteDoc(devSnap.docs[0].ref);
+      return;
+    }
 
     const anySnap = await getDocs(
       query(
@@ -45,7 +59,7 @@ export function useDevHelpers() {
         where('stand_id', '==', STAND_ID),
         where('status', '==', 'waiting'),
         limit(1),
-      )
+      ),
     );
     if (!anySnap.empty) await deleteDoc(anySnap.docs[0].ref);
   }
@@ -56,7 +70,7 @@ export function useDevHelpers() {
         collection(db, 'queue'),
         where('stand_id', '==', STAND_ID),
         where('status', 'in', ['waiting', 'orange', 'claimed']),
-      )
+      ),
     );
     if (qSnap.empty) return;
     const batch = writeBatch(db);

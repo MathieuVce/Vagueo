@@ -20,14 +20,14 @@
 
 ## Stack
 
-| Couche | Technologie |
-|---|---|
-| Frontend | React 18 + Vite (PWA) |
-| Temps réel | Firebase Firestore (onSnapshot) |
-| Auth clients | Firebase Anonymous Auth |
-| Auth vendeur | Firebase Google Sign-In |
-| Notifications | Web Push API + Service Worker |
-| Hosting | Vercel |
+| Couche        | Technologie                     |
+| ------------- | ------------------------------- |
+| Frontend      | React 18 + Vite (PWA)           |
+| Temps réel    | Firebase Firestore (onSnapshot) |
+| Auth clients  | Firebase Anonymous Auth         |
+| Auth vendeur  | Firebase Google Sign-In         |
+| Notifications | Web Push API + Service Worker   |
+| Hosting       | Vercel                          |
 
 ## Lancer en local
 
@@ -39,11 +39,11 @@ npm install
 npm run dev
 ```
 
-| URL | Usage |
-|---|---|
-| `localhost:3000/` | Écran client (QR code) |
-| `localhost:3000/vendor` | Dashboard vendeur |
-| `localhost:3000/admin` | Dashboard admin (accès restreint) |
+| URL                     | Usage                             |
+| ----------------------- | --------------------------------- |
+| `localhost:3000/`       | Écran client (QR code)            |
+| `localhost:3000/vendor` | Dashboard vendeur                 |
+| `localhost:3000/admin`  | Dashboard admin (accès restreint) |
 
 Pour la configuration Firebase complète (Firestore, Auth, règles, Vercel, notifications push) → **[SETUP.md](./SETUP.md)**
 
@@ -79,13 +79,13 @@ npm run test:flows        # parcours utilisateurs uniquement
 
 ### Tests unitaires — 43 fichiers · 319 tests
 
-| Zone | Fichiers couverts | Lignes |
-|---|---|---|
-| `src/hooks` | useStand (+ cas STAND_ID vide), useVendorAuth, useClientSession, useQueueCounts, useClock, useDevHelpers, usePush | 97 % |
-| `src/screens` | ScreenSplash, ScreenAttente, ScreenCheckin, ScreenValidation, ScreenStats, ScreenVendor, ScreenVendorLogin, ScreenVendorSetup, ScreenVendorCreate, ScreenQRCode, ScreenMerci, DevModeChoice | 95 % |
-| `src/ui` | Button, Field, Label, Segment, Toggle, Toast, Drawer | 96 % |
-| `src/components` | ModalDialog, ModalRating, VgButton, ErrorBoundary, VagueoLogo, WaveBackground, SecureColorBg | 54 %* |
-| `src/pages` | AdminApp, VendorApp, ClientApp (+ cas sans `?stand=`) | 88 % |
+| Zone             | Fichiers couverts                                                                                                                                                                           | Lignes |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| `src/hooks`      | useStand (+ cas STAND_ID vide), useVendorAuth, useClientSession, useQueueCounts, useClock, useDevHelpers, usePush                                                                           | 97 %   |
+| `src/screens`    | ScreenSplash, ScreenAttente, ScreenCheckin, ScreenValidation, ScreenStats, ScreenVendor, ScreenVendorLogin, ScreenVendorSetup, ScreenVendorCreate, ScreenQRCode, ScreenMerci, DevModeChoice | 95 %   |
+| `src/ui`         | Button, Field, Label, Segment, Toggle, Toast, Drawer                                                                                                                                        | 96 %   |
+| `src/components` | ModalDialog, ModalRating, VgButton, ErrorBoundary, VagueoLogo, WaveBackground, SecureColorBg                                                                                                | 54 %\* |
+| `src/pages`      | AdminApp, VendorApp, ClientApp (+ cas sans `?stand=`)                                                                                                                                       | 88 %   |
 
 \* `RippleCanvas` et `WaveBackground` sont des animations canvas non exercées en tests.
 
@@ -97,37 +97,37 @@ Parcours utilisateurs complets avec hooks mockés et screens réels (sauf except
 
 **`ClientApp.flow.test.tsx` — 6 parcours**
 
-| Parcours | Ce qui est vérifié |
-|---|---|
-| Complet | splash → rejoindre → attente → appelé → service → noter → terminer |
-| Délai | checkin timeout → modal orange → clic "Décaler" → modal fermé |
-| Abandon | checkin timeout (délai épuisé) → modal orange → quitter la file |
-| Fin de service | service timeout → "J'ai fini" → notation 5 étoiles → soumettre |
-| File fermée | bouton "Rejoindre" absent sur le splash quand `is_open = false` |
-| Pause | overlay "En pause" visible → disparaît après reprise du stand |
+| Parcours       | Ce qui est vérifié                                                 |
+| -------------- | ------------------------------------------------------------------ |
+| Complet        | splash → rejoindre → attente → appelé → service → noter → terminer |
+| Délai          | checkin timeout → modal orange → clic "Décaler" → modal fermé      |
+| Abandon        | checkin timeout (délai épuisé) → modal orange → quitter la file    |
+| Fin de service | service timeout → "J'ai fini" → notation 5 étoiles → soumettre     |
+| File fermée    | bouton "Rejoindre" absent sur le splash quand `is_open = false`    |
+| Pause          | overlay "En pause" visible → disparaît après reprise du stand      |
 
-**`VendorApp.flow.test.tsx` — 7 parcours** *(screens mockés pour isoler la logique de navigation)*
+**`VendorApp.flow.test.tsx` — 7 parcours** _(screens mockés pour isoler la logique de navigation)_
 
-| Parcours | Ce qui est vérifié |
-|---|---|
-| Connexion | chargement → login → clic Google → tableau de bord |
-| Pause | "Mettre en pause" → `togglePause` appelé → "Reprendre" affiché |
-| File | "Fermer la file" → `toggleOpen` appelé → "Ouvrir la file" affiché |
-| Paramètres | overlay setup → "Annuler" → retour tableau de bord |
-| QR code | overlay QR → bouton × → retour tableau de bord |
-| Statistiques | overlay stats → "Fermer" → retour tableau de bord |
+| Parcours      | Ce qui est vérifié                                                |
+| ------------- | ----------------------------------------------------------------- |
+| Connexion     | chargement → login → clic Google → tableau de bord                |
+| Pause         | "Mettre en pause" → `togglePause` appelé → "Reprendre" affiché    |
+| File          | "Fermer la file" → `toggleOpen` appelé → "Ouvrir la file" affiché |
+| Paramètres    | overlay setup → "Annuler" → retour tableau de bord                |
+| QR code       | overlay QR → bouton × → retour tableau de bord                    |
+| Statistiques  | overlay stats → "Fermer" → retour tableau de bord                 |
 | Setup initial | stand sans nom → form auto-ouvert → sauvegarder → tableau de bord |
 
-**`VendorApp.nostand.test.tsx` — 7 cas + 1 flux** *(STAND_ID vide)*
+**`VendorApp.nostand.test.tsx` — 7 cas + 1 flux** _(STAND_ID vide)_
 
-| Cas / Parcours | Ce qui est vérifié |
-|---|---|
-| Auth en cours | spinner affiché, pas d'écran de création |
-| Utilisateur null | écran de login affiché |
-| Utilisateur anonyme | écran de login affiché |
-| Google connecté | `ScreenVendorCreate` affiché avec l'email |
-| Redirection | `window.location.replace('/vendor?stand=<id>')` déclenché |
-| Flux complet | chargement → login → connexion → `ScreenVendorCreate` → création → redirection |
+| Cas / Parcours      | Ce qui est vérifié                                                             |
+| ------------------- | ------------------------------------------------------------------------------ |
+| Auth en cours       | spinner affiché, pas d'écran de création                                       |
+| Utilisateur null    | écran de login affiché                                                         |
+| Utilisateur anonyme | écran de login affiché                                                         |
+| Google connecté     | `ScreenVendorCreate` affiché avec l'email                                      |
+| Redirection         | `window.location.replace('/vendor?stand=<id>')` déclenché                      |
+| Flux complet        | chargement → login → connexion → `ScreenVendorCreate` → création → redirection |
 
 ---
 
@@ -161,11 +161,11 @@ npx firebase-tools deploy --only firestore:rules --project <project-id>
 
 ### Ce que font les règles
 
-| Collection | Lecture | Écriture |
-|---|---|---|
-| `stands` | Tout le monde | Vendeur propriétaire · incrément compteur (clients anonymes) |
-| `stands/{id}/history` | Vendeur propriétaire | Tout utilisateur authentifié |
-| `queue` | Tout utilisateur authentifié | Chacun son propre document |
+| Collection            | Lecture                      | Écriture                                                     |
+| --------------------- | ---------------------------- | ------------------------------------------------------------ |
+| `stands`              | Tout le monde                | Vendeur propriétaire · incrément compteur (clients anonymes) |
+| `stands/{id}/history` | Vendeur propriétaire         | Tout utilisateur authentifié                                 |
+| `queue`               | Tout utilisateur authentifié | Chacun son propre document                                   |
 
 ## Déploiement
 
