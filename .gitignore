@@ -41,5 +41,6 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 
-# AI tooling
-.claude/
+# AI tooling — on versionne la config partagée (settings.json + hooks),
+# les réglages perso restent locaux.
+.claude/settings.local.json

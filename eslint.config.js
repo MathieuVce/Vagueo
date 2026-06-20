@@ -2,7 +2,11 @@ import js from '@eslint/js';
 import ts from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
+import prettier from 'eslint-config-prettier';
 
+// Filet de sécurité léger, non bloquant, qui complète `tsc` sans dupliquer son
+// boulot. Prettier gère la mise en forme ; `prettier` (en dernier) désactive les
+// règles de style ESLint qui entreraient en conflit.
 export default ts.config(
   { ignores: ['dist/', 'coverage/', 'functions/'] },
 
@@ -18,11 +22,14 @@ export default ts.config(
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', {
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
-        caughtErrorsIgnorePattern: '^_',
-      }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
       'no-empty': ['error', { allowEmptyCatch: true }],
       'react-hooks/exhaustive-deps': 'off',
       // New react-hooks v7 rules — too strict for intentional patterns in this codebase
@@ -30,4 +37,6 @@ export default ts.config(
       'react-hooks/refs': 'warn',
     },
   },
+
+  prettier,
 );

@@ -7,7 +7,7 @@ interface UsePushReturn {
 
 export function usePush(): UsePushReturn {
   const permitted = useRef<NotificationPermission>(
-    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied',
   );
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
@@ -23,13 +23,14 @@ export function usePush(): UsePushReturn {
     if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
     try {
       const reg = await navigator.serviceWorker.ready;
+      // renotify/vibrate sont valides à l'exécution mais absents du type lib DOM
       reg.showNotification(title, {
         body,
         icon: '/icon-192.png',
         tag: 'vagueo-turn',
         renotify: true,
         vibrate: [200, 100, 200],
-      });
+      } as NotificationOptions & { renotify?: boolean; vibrate?: number[] });
     } catch {
       // Falls back silently (dev HTTP, unsupported browser)
     }

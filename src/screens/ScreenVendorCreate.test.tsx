@@ -14,7 +14,7 @@ describe('ScreenVendorCreate', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(global.crypto, 'randomUUID').mockReturnValue(
+    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
       'abcdef1234567890abcdef1234567890' as ReturnType<typeof crypto.randomUUID>,
     );
   });
@@ -71,13 +71,13 @@ describe('ScreenVendorCreate', () => {
     expect(setDoc).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        name:         'Mon Stand',
-        address:      'Allée B',
-        status:       'pending_approval',
-        vendor_uid:   'user-123',
+        name: 'Mon Stand',
+        address: 'Allée B',
+        status: 'pending_approval',
+        vendor_uid: 'user-123',
         vendor_email: 'vendor@test.com',
-        is_open:      false,
-        is_paused:    false,
+        is_open: false,
+        is_paused: false,
       }),
     );
   });
@@ -112,7 +112,11 @@ describe('ScreenVendorCreate', () => {
 
   it('shows "Création…" while setDoc is pending', async () => {
     let resolveSetDoc!: () => void;
-    (setDoc as any).mockReturnValueOnce(new Promise<void>(r => { resolveSetDoc = r; }));
+    (setDoc as any).mockReturnValueOnce(
+      new Promise<void>((r) => {
+        resolveSetDoc = r;
+      }),
+    );
 
     render(<ScreenVendorCreate user={mockUser} onCreated={mockOnCreated} />);
     fireEvent.change(screen.getByPlaceholderText(/Ex : Chez Marie/i), {
@@ -121,7 +125,9 @@ describe('ScreenVendorCreate', () => {
     fireEvent.click(screen.getByRole('button', { name: /Créer mon stand/i }));
 
     expect(screen.getByText(/Création…/i)).toBeInTheDocument();
-    await act(async () => { resolveSetDoc(); });
+    await act(async () => {
+      resolveSetDoc();
+    });
   });
 
   // ─── Error handling ───────────────────────────────────────────

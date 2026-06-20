@@ -1,0 +1,40 @@
+{
+  "$comment": "Réglages partagés du projet (versionnés). deny = équivalent .claudeignore (gros fichiers jamais lus -> moins de tokens). allow = commandes sûres lancées sans prompt (plus d'autonomie). hooks = vérif tsc automatique après chaque édition .ts/.tsx. settings.local.json reste personnel (non versionné).",
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run format:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm run check:*)",
+      "Bash(npm test:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx prettier:*)",
+      "Bash(npx vitest:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)"
+    ],
+    "deny": [
+      "Read(./node_modules/**)",
+      "Read(./dist/**)",
+      "Read(./coverage/**)",
+      "Read(./.vercel/**)",
+      "Read(./.firebase/**)",
+      "Read(./package-lock.json)",
+      "Read(**/*.tsbuildinfo)",
+      "Read(**/*.map)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "bash .claude/hooks/tsc-check.sh" }]
+      }
+    ]
+  }
+}
