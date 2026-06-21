@@ -42,6 +42,7 @@ Principe : **agir, se vérifier soi-même, ne demander que les vrais choix produ
 ## Commits
 
 - **Conventional Commits**, format `<type>(<scope>): <description>`. Types : `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`. Descriptions en **français** (cohérent avec l'historique).
+- **Noms de branches en anglais** (kebab-case), préfixe conventionnel : `feat/…`, `fix/…`, `chore/…`, etc. Ex. : `feat/wave-model`, `fix/orange-trigger`. (Les messages de commit restent en français, seuls les noms de branches sont en anglais.)
 - **Jamais de trailer `Co-Authored-By`** ni mention d'assistant dans les messages.
 - **Corps de PR** : pas d'emojis, pas de footer « Generated with… », pas de checklist. Phrases simples : contexte puis changements.
 - Hooks Git automatiques : **pre-commit** (husky + lint-staged) formate/lint les fichiers stagés ; **commit-msg** (commitlint) valide le format ; **pre-push** lance `npm run check`. Pas besoin de formater à la main.
