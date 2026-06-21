@@ -46,7 +46,7 @@ Principe : **agir, se vérifier soi-même, ne demander que les vrais choix produ
 - **Jamais de trailer `Co-Authored-By`** ni mention d'assistant dans les messages.
 - **Corps de PR** : pas d'emojis, pas de footer « Generated with… », pas de checklist. Phrases simples : contexte puis changements.
 - Hooks Git automatiques : **pre-commit** (husky + lint-staged) formate/lint les fichiers stagés ; **commit-msg** (commitlint) valide le format ; **pre-push** lance `npm run check`. Pas besoin de formater à la main.
-- Push sur `main` = **déploiement Vercel automatique** : ne pousser sur `main` qu'à la demande explicite de l'utilisateur.
+- **Déploiement Vercel = push sur la branche `deploy`** (déclenche le build/déploiement automatique). `main` est la branche d'intégration (revue par PR). Ne pousser sur `main` ou `deploy` qu'à la demande explicite de l'utilisateur.
 
 ## Fichiers d'exclusion stricts
 
