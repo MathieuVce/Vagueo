@@ -3,8 +3,12 @@ import type { User } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase.ts';
 import {
-  PALETTE, FONT,
-  FLOW_RATE_DEFAULT, FLOW_SLOW_DEFAULT, FLOW_SPRINT_DEFAULT, calcMinPerPerson,
+  PALETTE,
+  FONT,
+  FLOW_RATE_DEFAULT,
+  FLOW_SLOW_DEFAULT,
+  FLOW_SPRINT_DEFAULT,
+  calcMinPerPerson,
 } from '../tokens.ts';
 import VagueoLogo from '../components/VagueoLogo.tsx';
 
@@ -18,38 +22,43 @@ function genStandId(): string {
 }
 
 export default function ScreenVendorCreate({ user, onCreated }: Props) {
-  const [name,    setName]    = useState('');
+  const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const p = PALETTE;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmedName = name.trim();
-    if (!trimmedName) { setError('Le nom du stand est requis.'); return; }
+    if (!trimmedName) {
+      setError('Le nom du stand est requis.');
+      return;
+    }
 
     setLoading(true);
     setError(null);
     try {
       const standId = genStandId();
       await setDoc(doc(db, 'stands', standId), {
-        current_wave:   0,
-        queue_counter:  0,
-        is_paused:      false,
-        is_open:        false,
-        flow_rate:      FLOW_RATE_DEFAULT,
-        flow_slow:      FLOW_SLOW_DEFAULT,
-        flow_sprint:    FLOW_SPRINT_DEFAULT,
+        current_wave: 0,
+        queue_counter: 0,
+        fill_wave: 0,
+        fill_count: 0,
+        is_paused: false,
+        is_open: false,
+        flow_rate: FLOW_RATE_DEFAULT,
+        flow_slow: FLOW_SLOW_DEFAULT,
+        flow_sprint: FLOW_SPRINT_DEFAULT,
         min_per_person: calcMinPerPerson(FLOW_RATE_DEFAULT),
-        name:           trimmedName,
-        logo_url:       '',
-        address:        address.trim(),
-        status:         'pending_approval',
-        vendor_uid:     user.uid,
-        vendor_email:   user.email ?? '',
-        createdAt:      serverTimestamp(),
+        name: trimmedName,
+        logo_url: '',
+        address: address.trim(),
+        status: 'pending_approval',
+        vendor_uid: user.uid,
+        vendor_email: user.email ?? '',
+        createdAt: serverTimestamp(),
       });
       onCreated(standId);
     } catch {
@@ -72,31 +81,73 @@ export default function ScreenVendorCreate({ user, onCreated }: Props) {
   };
 
   return (
-    <div style={{
-      width: '100%', height: '100%',
-      background: p.paper, fontFamily: FONT,
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '0 32px',
-    }}>
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        background: p.paper,
+        fontFamily: FONT,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0 32px',
+      }}
+    >
       <VagueoLogo size={36} />
 
-      <div style={{ marginTop: 28, fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: p.ink }}>
+      <div
+        style={{
+          marginTop: 28,
+          fontSize: 20,
+          fontWeight: 700,
+          letterSpacing: '-0.02em',
+          color: p.ink,
+        }}
+      >
         Créer votre stand
       </div>
-      <div style={{ marginTop: 8, fontSize: 13, color: p.mute, textAlign: 'center', maxWidth: 280, lineHeight: 1.6 }}>
+      <div
+        style={{
+          marginTop: 8,
+          fontSize: 13,
+          color: p.mute,
+          textAlign: 'center',
+          maxWidth: 280,
+          lineHeight: 1.6,
+        }}
+      >
         Votre stand sera visible une fois approuvé par l'administrateur.
       </div>
 
-      <form onSubmit={handleSubmit} style={{ marginTop: 28, width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          marginTop: 28,
+          width: '100%',
+          maxWidth: 320,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+        }}
+      >
         <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: p.mute, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: p.mute,
+              marginBottom: 6,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}
+          >
             Nom du stand *
           </div>
           <input
             type="text"
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
             placeholder="Ex : Chez Marie"
             disabled={loading}
             style={inputStyle}
@@ -105,13 +156,22 @@ export default function ScreenVendorCreate({ user, onCreated }: Props) {
         </div>
 
         <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: p.mute, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: p.mute,
+              marginBottom: 6,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}
+          >
             Adresse (optionnel)
           </div>
           <input
             type="text"
             value={address}
-            onChange={e => setAddress(e.target.value)}
+            onChange={(e) => setAddress(e.target.value)}
             placeholder="Ex : Marché central, allée B"
             disabled={loading}
             style={inputStyle}

@@ -17,12 +17,40 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: "24"
-          cache: "npm"
+          node-version: '24'
+          cache: 'npm'
 
       - run: npm ci
+      - run: npm run typecheck
       - run: npm run lint
       - run: npm test -- --run
+
+  # ── Tests des règles Firestore (émulateur) — PRs et main ──────
+  rules:
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Cache emulators
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}
+
+      - run: npm ci
+      - run: npm run test:rules
 
   # ── Runs only on push to deploy ───────────────────────────────
   # Pulls production env vars from Vercel before building so VITE_FIREBASE_*
@@ -36,8 +64,8 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: "24"
-          cache: "npm"
+          node-version: '24'
+          cache: 'npm'
 
       - run: npm ci
 

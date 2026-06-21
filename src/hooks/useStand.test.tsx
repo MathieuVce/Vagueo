@@ -13,7 +13,9 @@ describe('useStand', () => {
     });
     const { result } = renderHook(() => useStand());
     if (standData !== undefined) {
-      act(() => { snapCb?.({ exists: () => true, data: () => standData }); });
+      act(() => {
+        snapCb?.({ exists: () => true, data: () => standData });
+      });
     }
     return result;
   }
@@ -40,17 +42,27 @@ describe('useStand', () => {
 
   it('auto-creates stand when not exists and autoCreate=true', async () => {
     let snapCb: any;
-    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => { snapCb = cb; return () => {}; });
+    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => {
+      snapCb = cb;
+      return () => {};
+    });
     renderHook(() => useStand({ autoCreate: true }));
-    await act(async () => { await snapCb({ exists: () => false }); });
+    await act(async () => {
+      await snapCb({ exists: () => false });
+    });
     expect(setDoc).toHaveBeenCalled();
   });
 
   it('does not create stand when not exists and autoCreate=false', async () => {
     let snapCb: any;
-    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => { snapCb = cb; return () => {}; });
+    (onSnapshot as any).mockImplementation((_ref: any, cb: any) => {
+      snapCb = cb;
+      return () => {};
+    });
     renderHook(() => useStand());
-    await act(async () => { await snapCb({ exists: () => false }); });
+    await act(async () => {
+      await snapCb({ exists: () => false });
+    });
     expect(setDoc).not.toHaveBeenCalled();
   });
 
@@ -58,7 +70,9 @@ describe('useStand', () => {
 
   it('advance calls updateDoc with increment(1)', async () => {
     const result = boot({ current_wave: 0 });
-    await act(async () => { await result.current[1].advance(); });
+    await act(async () => {
+      await result.current[1].advance();
+    });
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { current_wave: increment(1) });
   });
 
@@ -66,13 +80,17 @@ describe('useStand', () => {
 
   it('togglePause flips is_paused', async () => {
     const result = boot({ is_paused: false });
-    await act(async () => { await result.current[1].togglePause(); });
+    await act(async () => {
+      await result.current[1].togglePause();
+    });
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { is_paused: true });
   });
 
   it('togglePause is no-op when stand is null', async () => {
     const result = boot();
-    await act(async () => { await result.current[1].togglePause(); });
+    await act(async () => {
+      await result.current[1].togglePause();
+    });
     expect(updateDoc).not.toHaveBeenCalled();
   });
 
@@ -80,13 +98,17 @@ describe('useStand', () => {
 
   it('toggleOpen flips is_open', async () => {
     const result = boot({ is_open: true });
-    await act(async () => { await result.current[1].toggleOpen(); });
+    await act(async () => {
+      await result.current[1].toggleOpen();
+    });
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { is_open: false });
   });
 
   it('toggleOpen is no-op when stand is null', async () => {
     const result = boot();
-    await act(async () => { await result.current[1].toggleOpen(); });
+    await act(async () => {
+      await result.current[1].toggleOpen();
+    });
     expect(updateDoc).not.toHaveBeenCalled();
   });
 
@@ -94,39 +116,67 @@ describe('useStand', () => {
 
   it('setFlowRate updates flow_rate and min_per_person', async () => {
     const result = boot({ flow_rate: 3, flow_slow: 5, flow_sprint: 1 });
-    await act(async () => { await result.current[1].setFlowRate(1); }); // 3+1=4
-    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-      flow_rate: 4,
-      min_per_person: expect.any(Number),
-    }));
+    await act(async () => {
+      await result.current[1].setFlowRate(1);
+    }); // 3+1=4
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        flow_rate: 4,
+        min_per_person: expect.any(Number),
+      }),
+    );
   });
 
   it('setFlowRate clamps at max 5', async () => {
     const result = boot({ flow_rate: 5, flow_slow: 5, flow_sprint: 1 });
-    await act(async () => { await result.current[1].setFlowRate(2); });
-    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ flow_rate: 5 }));
+    await act(async () => {
+      await result.current[1].setFlowRate(2);
+    });
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ flow_rate: 5 }),
+    );
   });
 
   it('setFlowRate clamps at min 1', async () => {
     const result = boot({ flow_rate: 1, flow_slow: 5, flow_sprint: 1 });
-    await act(async () => { await result.current[1].setFlowRate(-2); });
-    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ flow_rate: 1 }));
+    await act(async () => {
+      await result.current[1].setFlowRate(-2);
+    });
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ flow_rate: 1 }),
+    );
   });
 
   it('setFlowRate is no-op when stand is null', async () => {
     const result = boot();
-    await act(async () => { await result.current[1].setFlowRate(1); });
+    await act(async () => {
+      await result.current[1].setFlowRate(1);
+    });
     expect(updateDoc).not.toHaveBeenCalled();
   });
 
   it('setFlowRate resets EMA: deleteField sur service_ms_ema et service_count à 0', async () => {
-    const result = boot({ flow_rate: 3, flow_slow: 5, flow_sprint: 1, service_ms_ema: 120_000, service_count: 10 });
-    await act(async () => { await result.current[1].setFlowRate(1); });
+    const result = boot({
+      flow_rate: 3,
+      flow_slow: 5,
+      flow_sprint: 1,
+      service_ms_ema: 120_000,
+      service_count: 10,
+    });
+    await act(async () => {
+      await result.current[1].setFlowRate(1);
+    });
     expect(deleteField).toHaveBeenCalled();
-    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-      service_count: 0,
-      flow_rate: 4,
-    }));
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        service_count: 0,
+        flow_rate: 4,
+      }),
+    );
   });
 
   // ─── configure ────────────────────────────────────────────────
@@ -135,49 +185,75 @@ describe('useStand', () => {
     const result = boot({ flow_rate: 3 });
     await act(async () => {
       await result.current[1].configure({
-        name: ' Mon Stand ', logoUrl: 'https://img.com/logo.png',
-        address: 'B12 ', isOpen: true,
-        flowSlow: 5, flowSprint: 1,
-        maxQueueSize: 20, maxDelayed: 3, callAheadMin: 8,
+        name: ' Mon Stand ',
+        logoUrl: 'https://img.com/logo.png',
+        address: 'B12 ',
+        isOpen: true,
+        flowSlow: 5,
+        flowSprint: 1,
+        maxQueueSize: 20,
+        maxDelayed: 3,
+        callAheadMin: 8,
       });
     });
-    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-      name: 'Mon Stand',
-      address: 'B12',
-      is_open: true,
-      max_queue_size: 20,
-      max_delayed: 3,
-    }));
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        name: 'Mon Stand',
+        address: 'B12',
+        is_open: true,
+        max_queue_size: 20,
+        max_delayed: 3,
+      }),
+    );
   });
 
   it('configure passes null limits through', async () => {
     const result = boot({ flow_rate: 3 });
     await act(async () => {
       await result.current[1].configure({
-        name: 'Stand', logoUrl: '', address: '', isOpen: false,
-        flowSlow: 5, flowSprint: 1,
-        maxQueueSize: null, maxDelayed: null, callAheadMin: 8,
+        name: 'Stand',
+        logoUrl: '',
+        address: '',
+        isOpen: false,
+        flowSlow: 5,
+        flowSprint: 1,
+        maxQueueSize: null,
+        maxDelayed: null,
+        callAheadMin: 8,
       });
     });
-    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-      max_queue_size: null,
-      max_delayed: null,
-    }));
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        max_queue_size: null,
+        max_delayed: null,
+      }),
+    );
   });
 
   it('configure falls back to FLOW defaults when flowSlow/flowSprint are 0', async () => {
     const result = boot({ flow_rate: 3 });
     await act(async () => {
       await result.current[1].configure({
-        name: 'Stand', logoUrl: '', address: '', isOpen: false,
-        flowSlow: 0, flowSprint: 0,
-        maxQueueSize: null, maxDelayed: null, callAheadMin: 8,
+        name: 'Stand',
+        logoUrl: '',
+        address: '',
+        isOpen: false,
+        flowSlow: 0,
+        flowSprint: 0,
+        maxQueueSize: null,
+        maxDelayed: null,
+        callAheadMin: 8,
       });
     });
-    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-      flow_slow:   expect.any(Number),
-      flow_sprint: expect.any(Number),
-    }));
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        flow_slow: expect.any(Number),
+        flow_sprint: expect.any(Number),
+      }),
+    );
   });
 
   // ─── claimStand ───────────────────────────────────────────────
@@ -188,7 +264,7 @@ describe('useStand', () => {
       await result.current[1].claimStand('uid123', 'vendor@test.com');
     });
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
-      vendor_uid:   'uid123',
+      vendor_uid: 'uid123',
       vendor_email: 'vendor@test.com',
     });
   });
@@ -199,7 +275,7 @@ describe('useStand', () => {
       await result.current[1].claimStand('uid123', null);
     });
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
-      vendor_uid:   'uid123',
+      vendor_uid: 'uid123',
       vendor_email: '',
     });
   });

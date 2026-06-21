@@ -43,20 +43,23 @@ describe('usePush', () => {
 
   it('notifies when permitted', async () => {
     const { result } = renderHook(() => usePush());
-    
+
     // First, we must request permission to update the internal ref
     await act(async () => {
       await result.current.requestPermission();
     });
-    
+
     await act(async () => {
       await result.current.notify('Title', 'Body');
     });
 
     expect(navigator.vibrate).toHaveBeenCalledWith([200, 100, 200]);
     const reg = await navigator.serviceWorker.ready;
-    expect(reg.showNotification).toHaveBeenCalledWith('Title', expect.objectContaining({
-      body: 'Body',
-    }));
+    expect(reg.showNotification).toHaveBeenCalledWith(
+      'Title',
+      expect.objectContaining({
+        body: 'Body',
+      }),
+    );
   });
 });

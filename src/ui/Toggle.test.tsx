@@ -4,7 +4,9 @@ import { Toggle } from './Toggle';
 
 describe('Toggle', () => {
   it('renders label and sublabel', () => {
-    render(<Toggle on={false} onToggle={() => {}} label="Push Notifications" sublabel="Stay updated" />);
+    render(
+      <Toggle on={false} onToggle={() => {}} label="Push Notifications" sublabel="Stay updated" />,
+    );
     expect(screen.getByText('Push Notifications')).toBeInTheDocument();
     expect(screen.getByText('Stay updated')).toBeInTheDocument();
   });
@@ -19,7 +21,7 @@ describe('Toggle', () => {
   it('reflects "on" state via aria-checked', () => {
     const { rerender } = render(<Toggle on={false} onToggle={() => {}} label="Toggle" />);
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
-    
+
     rerender(<Toggle on={true} onToggle={() => {}} label="Toggle" />);
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
   });

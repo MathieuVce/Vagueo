@@ -18,7 +18,9 @@ describe('ScreenCheckin', () => {
 
   it('shows delay button and calls onDelay when clicked', () => {
     const handleDelay = vi.fn();
-    render(<ScreenCheckin onConfirm={() => {}} onDelay={handleDelay} delayUsed={false} delayMin={10} />);
+    render(
+      <ScreenCheckin onConfirm={() => {}} onDelay={handleDelay} delayUsed={false} delayMin={10} />,
+    );
     const delayBtn = screen.getByText(/Pas encore là/i);
     expect(delayBtn).toBeInTheDocument();
     expect(delayBtn).toHaveTextContent(/10 min/);

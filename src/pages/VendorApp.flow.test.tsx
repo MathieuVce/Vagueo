@@ -13,31 +13,49 @@ vi.mock('../hooks/useVendorStandLookup', () => ({
 }));
 vi.mock('../hooks/useDevHelpers', () => ({
   useDevHelpers: () => ({
-    devAddClient: vi.fn(), devRemoveClient: vi.fn(),
-    devClearQueue: vi.fn(), devResetStore: vi.fn(),
+    devAddClient: vi.fn(),
+    devRemoveClient: vi.fn(),
+    devClearQueue: vi.fn(),
+    devResetStore: vi.fn(),
   }),
 }));
 // ScreenStats appelle Firebase directement — on l'isole
 vi.mock('../screens/ScreenStats', () => ({
   default: ({ onClose }: any) => (
-    <div data-testid="screen-stats"><button onClick={onClose}>Fermer Stats</button></div>
+    <div data-testid="screen-stats">
+      <button onClick={onClose}>Fermer Stats</button>
+    </div>
   ),
 }));
 
 describe('VendorApp — flux utilisateur', () => {
   const baseStand: any = {
-    id: 'stand-1', name: 'Mon Stand', vendor_uid: 'v1',
-    is_open: true, is_paused: false, min_per_person: 3,
-    flow_rate: 3, flow_slow: 5, flow_sprint: 1,
-    max_queue_size: null, max_delayed: null,
+    id: 'stand-1',
+    name: 'Mon Stand',
+    vendor_uid: 'v1',
+    is_open: true,
+    is_paused: false,
+    min_per_person: 3,
+    flow_rate: 3,
+    flow_slow: 5,
+    flow_sprint: 1,
+    max_queue_size: null,
+    max_delayed: null,
   };
   const baseActions = {
-    advance: vi.fn(), togglePause: vi.fn(), toggleOpen: vi.fn(),
-    setFlowRate: vi.fn(), configure: vi.fn().mockResolvedValue({}), claimStand: vi.fn(),
+    advance: vi.fn(),
+    togglePause: vi.fn(),
+    toggleOpen: vi.fn(),
+    setFlowRate: vi.fn(),
+    configure: vi.fn().mockResolvedValue({}),
+    claimStand: vi.fn(),
   };
   const baseAuth = {
     user: { uid: 'v1', email: 'vendor@test.com', isAnonymous: false },
-    loading: false, isAuthorized: true, isOwner: true, isUnclaimed: false,
+    loading: false,
+    isAuthorized: true,
+    isOwner: true,
+    isUnclaimed: false,
     signIn: vi.fn().mockResolvedValue(undefined),
     signOut: vi.fn().mockResolvedValue(undefined),
     error: null,
@@ -47,7 +65,10 @@ describe('VendorApp — flux utilisateur', () => {
     vi.clearAllMocks();
     (useStandHook.useStand as any).mockReturnValue([baseStand, baseActions]);
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue(baseAuth);
-    (useQueueCountsHook.useQueueCounts as any).mockReturnValue({ presentCount: 2, waitingCount: 5 });
+    (useQueueCountsHook.useQueueCounts as any).mockReturnValue({
+      presentCount: 2,
+      waitingCount: 5,
+    });
   });
 
   // ─── Parcours connexion ───────────────────────────────────────
@@ -62,12 +83,17 @@ describe('VendorApp — flux utilisateur', () => {
     // Login
     const signIn = vi.fn().mockResolvedValue(undefined);
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({
-      ...baseAuth, user: null, loading: false, signIn,
+      ...baseAuth,
+      user: null,
+      loading: false,
+      signIn,
     });
     rerender(<VendorApp />);
     expect(screen.getByText('Se connecter avec Google')).toBeInTheDocument();
 
-    await act(async () => { fireEvent.click(screen.getByText('Se connecter avec Google')); });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Se connecter avec Google'));
+    });
     expect(signIn).toHaveBeenCalled();
 
     // Tableau de bord
@@ -92,7 +118,8 @@ describe('VendorApp — flux utilisateur', () => {
 
     // Simulate the hook reflecting the new state
     (useStandHook.useStand as any).mockReturnValue([
-      { ...baseStand, is_paused: true }, baseActions,
+      { ...baseStand, is_paused: true },
+      baseActions,
     ]);
     rerender(<VendorApp />);
     expect(screen.getByText('En pause')).toBeInTheDocument();
@@ -111,9 +138,7 @@ describe('VendorApp — flux utilisateur', () => {
     fireEvent.click(screen.getByText(/Fermer la file/i));
     expect(baseActions.toggleOpen).toHaveBeenCalled();
 
-    (useStandHook.useStand as any).mockReturnValue([
-      { ...baseStand, is_open: false }, baseActions,
-    ]);
+    (useStandHook.useStand as any).mockReturnValue([{ ...baseStand, is_open: false }, baseActions]);
     rerender(<VendorApp />);
     expect(screen.getByText(/Ouvrir la file/i)).toBeInTheDocument();
 
@@ -175,12 +200,15 @@ describe('VendorApp — flux utilisateur', () => {
     fireEvent.change(screen.getByPlaceholderText(/Churros Mathieu/i), {
       target: { value: 'Mon Nouveau Stand' },
     });
-    await act(async () => { fireEvent.click(screen.getByText(/Créer mon stand/i)); });
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Créer mon stand/i));
+    });
     expect(baseActions.configure).toHaveBeenCalled();
 
     // Simulate the updated stand → setup closes, dashboard visible
     (useStandHook.useStand as any).mockReturnValue([
-      { ...baseStand, name: 'Mon Nouveau Stand' }, baseActions,
+      { ...baseStand, name: 'Mon Nouveau Stand' },
+      baseActions,
     ]);
     rerender(<VendorApp />);
     expect(screen.queryByText(/Créer mon stand/i)).not.toBeInTheDocument();

@@ -13,8 +13,10 @@ vi.mock('../hooks/useVendorStandLookup', () => ({
 }));
 vi.mock('../hooks/useDevHelpers', () => ({
   useDevHelpers: () => ({
-    devAddClient: vi.fn(), devRemoveClient: vi.fn(),
-    devClearQueue: vi.fn(), devResetStore: vi.fn(),
+    devAddClient: vi.fn(),
+    devRemoveClient: vi.fn(),
+    devClearQueue: vi.fn(),
+    devResetStore: vi.fn(),
   }),
 }));
 
@@ -35,9 +37,15 @@ vi.mock('../screens/ScreenVendor', () => ({
     <div>
       <span>{stand.name || '(no name)'}</span>
       <span>En service</span>
-      <button onClick={onOpenStats} title="Statistiques">Stats</button>
-      <button onClick={onOpenQR} title="QR Code">QR</button>
-      <button onClick={onOpenSettings} title="Paramètres du stand">Paramètres</button>
+      <button onClick={onOpenStats} title="Statistiques">
+        Stats
+      </button>
+      <button onClick={onOpenQR} title="QR Code">
+        QR
+      </button>
+      <button onClick={onOpenSettings} title="Paramètres du stand">
+        Paramètres
+      </button>
       <button onClick={onSignOut}>Déconnexion</button>
     </div>
   ),
@@ -69,18 +77,29 @@ vi.mock('../screens/ScreenQRCode', () => ({
 
 describe('VendorApp', () => {
   const mockStand: any = {
-    id: 'stand-1', name: 'Mon Stand', vendor_uid: 'v1',
-    is_open: true, is_paused: false, min_per_person: 3,
+    id: 'stand-1',
+    name: 'Mon Stand',
+    vendor_uid: 'v1',
+    is_open: true,
+    is_paused: false,
+    min_per_person: 3,
   };
 
   const mockActions = {
-    advance: vi.fn(), togglePause: vi.fn(), toggleOpen: vi.fn(),
-    setFlowRate: vi.fn(), configure: vi.fn().mockResolvedValue({}), claimStand: vi.fn(),
+    advance: vi.fn(),
+    togglePause: vi.fn(),
+    toggleOpen: vi.fn(),
+    setFlowRate: vi.fn(),
+    configure: vi.fn().mockResolvedValue({}),
+    claimStand: vi.fn(),
   };
 
   const mockAuth: any = {
     user: { uid: 'v1', email: 'vendor@test.com', isAnonymous: false },
-    loading: false, isAuthorized: true, isOwner: true, isUnclaimed: false,
+    loading: false,
+    isAuthorized: true,
+    isOwner: true,
+    isUnclaimed: false,
     signIn: vi.fn().mockResolvedValue(undefined),
     signOut: vi.fn().mockResolvedValue(undefined),
     error: null,
@@ -90,7 +109,10 @@ describe('VendorApp', () => {
     vi.clearAllMocks();
     (useStandHook.useStand as any).mockReturnValue([mockStand, mockActions]);
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue(mockAuth);
-    (useQueueCountsHook.useQueueCounts as any).mockReturnValue({ presentCount: 2, waitingCount: 5 });
+    (useQueueCountsHook.useQueueCounts as any).mockReturnValue({
+      presentCount: 2,
+      waitingCount: 5,
+    });
   });
 
   // ─── Loading ──────────────────────────────────────────────────
@@ -131,23 +153,34 @@ describe('VendorApp', () => {
     const signIn = vi.fn().mockResolvedValue(undefined);
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({ ...mockAuth, user: null, signIn });
     render(<VendorApp />);
-    await act(async () => { fireEvent.click(screen.getByText('Se connecter avec Google')); });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Se connecter avec Google'));
+    });
     expect(signIn).toHaveBeenCalled();
   });
 
   it('shows "Connexion…" while sign-in is in progress', async () => {
     let resolveSignIn!: () => void;
-    const signIn = vi.fn(() => new Promise<void>(r => { resolveSignIn = r; }));
+    const signIn = vi.fn(
+      () =>
+        new Promise<void>((r) => {
+          resolveSignIn = r;
+        }),
+    );
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({ ...mockAuth, user: null, signIn });
     render(<VendorApp />);
     fireEvent.click(screen.getByText('Se connecter avec Google'));
     expect(screen.getByText('Connexion…')).toBeInTheDocument();
-    await act(async () => { resolveSignIn(); });
+    await act(async () => {
+      resolveSignIn();
+    });
   });
 
   it('shows auth error in login screen', () => {
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({
-      ...mockAuth, user: null, error: 'Connexion refusée',
+      ...mockAuth,
+      user: null,
+      error: 'Connexion refusée',
     });
     render(<VendorApp />);
     expect(screen.getByRole('alert')).toHaveTextContent('Connexion refusée');
@@ -169,7 +202,8 @@ describe('VendorApp', () => {
   it('calls signOut from access denied screen', () => {
     const signOut = vi.fn();
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({
-      ...mockAuth, isAuthorized: false,
+      ...mockAuth,
+      isAuthorized: false,
       user: { uid: 'other', email: 'other@test.com', isAnonymous: false },
       signOut,
     });
@@ -215,14 +249,20 @@ describe('VendorApp', () => {
   // ─── Pending approval ────────────────────────────────────────
 
   it('shows pending approval screen when stand status is pending_approval', () => {
-    (useStandHook.useStand as any).mockReturnValue([{ ...mockStand, status: 'pending_approval' }, mockActions]);
+    (useStandHook.useStand as any).mockReturnValue([
+      { ...mockStand, status: 'pending_approval' },
+      mockActions,
+    ]);
     render(<VendorApp />);
     expect(screen.getByText(/En attente d'approbation/i)).toBeInTheDocument();
   });
 
   it('allows sign out from pending approval screen', () => {
     const signOut = vi.fn();
-    (useStandHook.useStand as any).mockReturnValue([{ ...mockStand, status: 'pending_approval' }, mockActions]);
+    (useStandHook.useStand as any).mockReturnValue([
+      { ...mockStand, status: 'pending_approval' },
+      mockActions,
+    ]);
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({ ...mockAuth, signOut });
     render(<VendorApp />);
     fireEvent.click(screen.getByText(/Se déconnecter/i));

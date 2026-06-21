@@ -7,20 +7,26 @@ interface VagueoLogoProps {
 }
 
 // Wordmark "Vaguéo" with a small wave SVG accent above the "é".
-export default function VagueoLogo({ size = 28, color = 'currentColor', accent = null }: VagueoLogoProps) {
+export default function VagueoLogo({
+  size = 28,
+  color = 'currentColor',
+  accent = null,
+}: VagueoLogoProps) {
   const ac = accent || color;
   return (
-    <div style={{
-      display: 'inline-flex',
-      alignItems: 'baseline',
-      fontFamily: FONT_SERIF,
-      fontStyle: 'italic',
-      fontWeight: 400,
-      fontSize: size,
-      lineHeight: 1,
-      color,
-      letterSpacing: '-0.01em',
-    }}>
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'baseline',
+        fontFamily: FONT_SERIF,
+        fontStyle: 'italic',
+        fontWeight: 400,
+        fontSize: size,
+        lineHeight: 1,
+        color,
+        letterSpacing: '-0.01em',
+      }}
+    >
       <span>Vagu</span>
       <span style={{ position: 'relative', display: 'inline-block' }}>
         e
@@ -31,7 +37,7 @@ export default function VagueoLogo({ size = 28, color = 'currentColor', accent =
           style={{
             position: 'absolute',
             left: '50%',
-            top: `-${size * 0.10}px`,
+            top: `-${size * 0.1}px`,
             transform: 'translateX(-50%)',
             overflow: 'visible',
           }}
