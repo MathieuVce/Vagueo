@@ -44,6 +44,7 @@ function computeStats(events: HistoryEvent[]) {
   const leftCheckin = events.filter((e) => e.exit_reason === 'left_checkin').length;
   const timeoutCheckin = events.filter((e) => e.exit_reason === 'timeout_checkin').length;
   const timeoutService = events.filter((e) => e.exit_reason === 'timeout_service').length;
+  const timeoutWaiting = events.filter((e) => e.exit_reason === 'timeout_waiting').length;
   const delayUsed = events.filter((e) => e.delay_used).length;
   const waitVals = events.filter((e) => (e.wait_ms ?? 0) > 0).map((e) => e.wait_ms!);
   const serviceVals = events.filter((e) => (e.service_ms ?? 0) > 0).map((e) => e.service_ms!);
@@ -66,6 +67,7 @@ function computeStats(events: HistoryEvent[]) {
     leftCheckin,
     timeoutCheckin,
     timeoutService,
+    timeoutWaiting,
     delayUsed,
     avgWaitMin,
     avgServiceMin,
@@ -110,6 +112,7 @@ function buildPrintHTML(stats: Stats, period: Period, standId: string): string {
       ["Partis lors de l'appel", s.leftCheckin, ''],
       ['Non-présents (timeout)', s.timeoutCheckin, ''],
       ['Service écourté (timeout)', s.timeoutService, ''],
+      ['Abandons en attente (timeout)', s.timeoutWaiting, ''],
     ] as [string, number, string][]
   )
     .filter(([, v]) => (v ?? 0) > 0)
@@ -550,7 +553,10 @@ export default function ScreenStats({
               />
               <div
                 style={{
-                  flex: (stats.timeoutCheckin ?? 0) + (stats.timeoutService ?? 0),
+                  flex:
+                    (stats.timeoutCheckin ?? 0) +
+                    (stats.timeoutService ?? 0) +
+                    (stats.timeoutWaiting ?? 0),
                   background: p.line,
                 }}
               />
@@ -696,6 +702,11 @@ export default function ScreenStats({
               <ExitRow
                 label="Service écourté (timeout)"
                 value={stats.timeoutService ?? 0}
+                total={stats.total}
+              />
+              <ExitRow
+                label="Abandons en attente (timeout)"
+                value={stats.timeoutWaiting ?? 0}
                 total={stats.total}
               />
             </div>

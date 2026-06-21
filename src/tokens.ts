@@ -59,16 +59,36 @@ export function waveIntervalMs(minPerPerson: number): number {
 // Read from ?stand= in the URL. Empty string when absent (invalid/create flow).
 // Each QR code = one URL = one isolated stand.
 export const STAND_ID = new URLSearchParams(window.location.search).get('stand') ?? '';
-export const WAVE_SIZE = 5; // positions added when a client requests a delay
+
+// ─── Vagues ───────────────────────────────────────────────────
+// Modèle par vagues (pas de numéro individuel) : on rejoint une vague, et c'est
+// la vague entière qui passe. Affectation hybride = fenêtre de temps (la vague en
+// assemblage avance avec current_wave) plafonnée à WAVE_SIZE (le surplus déborde
+// sur la vague suivante).
+export const WAVE_SIZE = 5; // capacité max d'une vague (plafond hybride)
+// Décalage de la vague d'assemblage par rapport à la vague en cours.
+// 0 = on rejoint la vague courante (« groupe servi = current_wave », estimations
+// justes, premier groupe = vague 0 ; un retardataire peut rejoindre le groupe en
+// cours s'il reste de la place). Mettre 1 pour « fermer » le groupe courant aux
+// retardataires (au prix d'un current_wave en retard d'une vague).
+export const WAVE_LEAD = 0;
 
 // ─── Adaptive calling ─────────────────────────────────────────
-// Orange triggered when estimatedWait ≤ call_ahead_min × CALL_BUFFER_FACTOR.
-// The buffer accounts for travel time + non-app users in the physical queue.
+// Orange déclenché quand la vague du client est à ≤ CALL_AHEAD_WAVES de la vague
+// en cours (« une vague à l'avance » → le groupe a le temps d'arriver).
+export const CALL_AHEAD_WAVES = 1;
+// Anciens seuils (modèle par position) conservés pour compat/config vendeur ;
+// plus utilisés par le déclencheur orange désormais basé sur les vagues.
 export const CALL_AHEAD_MIN_DEFAULT = 8; // minutes, overridden per stand
 export const CALL_BUFFER_FACTOR = 1.3; // 30 % buffer on top of the threshold
 
 // EMA smoothing factor for service time learning.
 export const EMA_ALPHA = 0.2;
+// Plafond anti-aberration : un service mesuré au-delà de EMA_OUTLIER_FACTOR × la
+// référence (EMA en place, ou base du slider pour les premiers services) est
+// ramené à ce plafond avant d'alimenter l'apprentissage. Empêche un client qui
+// laisse l'écran ouvert sans cliquer « terminé » de polluer la moyenne.
+export const EMA_OUTLIER_FACTOR = 3;
 
 // ─── Timeouts ─────────────────────────────────────────────────
 // Orange: delay before showing the modal when the client hasn't confirmed presence
@@ -83,8 +103,36 @@ export function calcServicePromptMs(minPerPerson = 3): number {
 }
 export const SERVICE_RESPONSE_MS = 2 * 60_000;
 
-// Wave slots added when the client requests a delay (usable once only)
-export const DELAY_WAVES = 4;
+// Nombre de vagues ajoutées lors d'un décalage (utilisable une fois)
+export const DELAY_WAVES = 1;
+
+// ─── Filet de sécurité (reaper vendeur) ───────────────────────────
+// Le self-timeout côté client ne se déclenche que si SON onglet est ouvert. Côté
+// vendeur (toujours présent, droits de suppression), on purge en dernier recours
+// les fantômes : appelés sans réponse, ou servis sans clic « terminé ». Les
+// seuils dépassent volontairement le self-timeout client (+ STALE_GRACE_MS) pour
+// ne jamais court-circuiter le parcours normal.
+export const REAPER_INTERVAL_MS = 60_000; // fréquence de balayage
+export const STALE_GRACE_MS = 5 * 60_000; // marge au-delà du self-timeout client
+
+// Heartbeat de présence : tant que l'onglet client est visible, il signale qu'il
+// est vivant toutes les HEARTBEAT_INTERVAL_MS. Au-delà de HEARTBEAT_STALE_MS sans
+// signal, on considère l'onglet fermé. Sert surtout au cas « claimed » (écran de
+// validation, censé être au premier plan) : un onglet vif n'est jamais purgé même
+// sur un service long, et un onglet fermé l'est en quelques minutes au lieu de
+// ~20. NB : les navigateurs bridant les timers en arrière-plan, on garde les
+// seuils coarse (orange/waiting) pour tolérer un téléphone verrouillé en attente.
+export const HEARTBEAT_INTERVAL_MS = 25_000;
+export const HEARTBEAT_STALE_MS = 5 * 60_000;
+export const ORANGE_STALE_MS = ORANGE_PROMPT_MS + ORANGE_RESPONSE_MS + STALE_GRACE_MS;
+export function calcServiceStaleMs(minPerPerson = 3): number {
+  return calcServicePromptMs(minPerPerson) + SERVICE_RESPONSE_MS + STALE_GRACE_MS;
+}
+// Un client « waiting » dont l'onglet est fermé n'émet aucun signal de timeout.
+// On le purge seulement après un délai très long depuis l'inscription (garbage
+// collection des abandons), volontairement large pour ne jamais retirer quelqu'un
+// qui patiente encore légitimement.
+export const WAITING_STALE_MS = 2 * 60 * 60_000; // 2 h
 
 // ─── Typography (aliases backward-compat) ─────────────────────
 export const FONT = F.sans;

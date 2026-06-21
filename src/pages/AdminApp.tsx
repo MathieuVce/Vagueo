@@ -773,6 +773,8 @@ function CreateStandModal({
       vendor_email: vendorEmail.trim().toLowerCase(),
       current_wave: 0,
       queue_counter: 0,
+      fill_wave: 0,
+      fill_count: 0,
       is_paused: false,
       is_open: false,
       flow_rate: FLOW_RATE_DEFAULT,

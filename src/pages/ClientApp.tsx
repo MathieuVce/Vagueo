@@ -1,8 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase.ts';
 import { useStand } from '../hooks/useStand.ts';
-import { useClientSession } from '../hooks/useClientSession.ts';
+import {
+  useClientSession,
+  type ClientStep,
+  type ClientActions,
+} from '../hooks/useClientSession.ts';
 import { useClock } from '../hooks/useClock.ts';
 import { usePush } from '../hooks/usePush.ts';
 import {
@@ -12,6 +16,7 @@ import {
   calcServicePromptMs,
   SERVICE_RESPONSE_MS,
   WAVE_SIZE,
+  DELAY_WAVES,
   PALETTE,
   FONT,
   FONT_SERIF,
@@ -25,6 +30,9 @@ import ScreenValidation from '../screens/ScreenValidation.tsx';
 import ScreenMerci from '../screens/ScreenMerci.tsx';
 import ModalDialog from '../components/ModalDialog.tsx';
 import ModalRating from '../components/ModalRating.tsx';
+
+// Barre d'aide dev (jamais en prod ni en test) : forcer l'écran de SA session.
+const DEV = import.meta.env.DEV && import.meta.env.MODE !== 'test';
 
 export default function ClientApp() {
   const [stand] = useStand();
@@ -74,13 +82,13 @@ export default function ClientApp() {
     return onSnapshot(q, (snap) => setActiveCount(snap.size));
   }, []);
 
-  // Orange timeout: scales with how many people are still ahead in the wave.
-  // Prompt = max(ORANGE_PROMPT_MS, positionAhead × min_per_person).
-  // Resets whenever positionAhead drops (someone is served) — always accurate.
-  // Paused: timers cut. On resume: full delay restarts from zero.
+  // Orange timeout : proportionnel au nombre de vagues encore devant.
+  // Prompt = max(ORANGE_PROMPT_MS, wavesAhead × durée d'une vague).
+  // Se réinitialise quand wavesAhead baisse (vague servie) — toujours juste.
+  // Pause : timers coupés. À la reprise : délai complet relancé depuis zéro.
   const orangePromptMs = Math.max(
     ORANGE_PROMPT_MS,
-    derived.positionAhead * (stand?.min_per_person ?? 3) * 60_000,
+    derived.wavesAhead * WAVE_SIZE * (stand?.min_per_person ?? 3) * 60_000,
   );
   useEffect(() => {
     if (orangePromptRef.current) clearTimeout(orangePromptRef.current);
@@ -139,8 +147,8 @@ export default function ClientApp() {
 
   const isQueueFull = stand?.max_queue_size != null && activeCount >= stand.max_queue_size;
 
-  // Delay = one full wave behind (WAVE_SIZE slots × min_per_person)
-  const delayMin = Math.round(WAVE_SIZE * (stand?.min_per_person ?? 3));
+  // Décalage = DELAY_WAVES vague(s) en arrière (durée = WAVE_SIZE × min_per_person)
+  const delayMin = Math.round(DELAY_WAVES * WAVE_SIZE * (stand?.min_per_person ?? 3));
 
   if (!STAND_ID) {
     return (
@@ -197,8 +205,18 @@ export default function ClientApp() {
     );
   }
 
-  if (step === 'splash') {
-    return (
+  let content: ReactNode = null;
+  if (step === 'splash' && showMerci) {
+    content = (
+      <ScreenMerci
+        onRestart={() => {
+          setShowMerci(false);
+          void actions.restart();
+        }}
+      />
+    );
+  } else if (step === 'splash') {
+    content = (
       <ScreenSplash
         onJoin={actions.join}
         estimatedMin={splashEstMin}
@@ -209,10 +227,8 @@ export default function ClientApp() {
         isFull={isQueueFull}
       />
     );
-  }
-
-  if (step === 'waiting') {
-    return (
+  } else if (step === 'waiting') {
+    content = (
       <>
         <ScreenAttente
           estimatedMin={derived.estimatedMin}
@@ -223,10 +239,8 @@ export default function ClientApp() {
         {stand?.is_paused && <PauseOverlay />}
       </>
     );
-  }
-
-  if (step === 'checkin') {
-    return (
+  } else if (step === 'checkin') {
+    content = (
       <>
         <ScreenCheckin
           onConfirm={actions.confirmPresence}
@@ -279,10 +293,8 @@ export default function ClientApp() {
         )}
       </>
     );
-  }
-
-  if (step === 'validation') {
-    return (
+  } else if (step === 'validation') {
+    content = (
       <>
         <ScreenValidation
           secureColor={secureColor}
@@ -332,18 +344,88 @@ export default function ClientApp() {
     );
   }
 
-  if (step === 'splash' && showMerci) {
-    return (
-      <ScreenMerci
-        onRestart={() => {
-          setShowMerci(false);
-          void actions.restart();
-        }}
-      />
-    );
-  }
+  return (
+    <>
+      {content}
+      {DEV && <ClientDevBar step={step} hasClient={!!client} actions={actions} />}
+    </>
+  );
+}
 
-  return null;
+// Barre dev (DEV uniquement) : passer SA session en bleu (attente) / orange
+// (bientôt) / validation en un clic, sans second onglet.
+function ClientDevBar({
+  step,
+  hasClient,
+  actions,
+}: {
+  step: ClientStep;
+  hasClient: boolean;
+  actions: ClientActions;
+}) {
+  const wrap: React.CSSProperties = {
+    position: 'fixed',
+    left: 8,
+    bottom: 8,
+    zIndex: 9999,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '6px 8px',
+    borderRadius: 10,
+    background: 'rgba(17,20,26,0.88)',
+    fontFamily: FONT,
+  };
+  const tag: React.CSSProperties = {
+    fontSize: 10,
+    color: '#fff',
+    opacity: 0.6,
+    letterSpacing: '0.08em',
+  };
+  const btn: React.CSSProperties = {
+    border: 0,
+    borderRadius: 7,
+    padding: '6px 10px',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    color: '#11141a',
+    background: '#fff',
+  };
+  return (
+    <div style={wrap}>
+      <span style={tag}>DEV</span>
+      {step === 'splash' || !hasClient ? (
+        <button style={btn} onClick={() => void actions.join()}>
+          Rejoindre
+        </button>
+      ) : (
+        <>
+          <button
+            style={{ ...btn, background: '#54A0FF', color: '#fff' }}
+            onClick={() => void actions.devSet('waiting')}
+          >
+            Bleu
+          </button>
+          <button
+            style={{ ...btn, background: '#FF9F43', color: '#fff' }}
+            onClick={() => void actions.devSet('orange')}
+          >
+            Orange
+          </button>
+          <button style={btn} onClick={() => void actions.devSet('claimed')}>
+            Validation
+          </button>
+          <button
+            style={{ ...btn, background: 'transparent', color: '#fff' }}
+            onClick={() => void actions.leave('left_voluntarily')}
+          >
+            Quitter
+          </button>
+        </>
+      )}
+    </div>
+  );
 }
 
 function PauseOverlay() {

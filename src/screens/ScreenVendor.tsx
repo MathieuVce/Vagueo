@@ -27,6 +27,8 @@ interface ScreenVendorProps {
   isDevMode: boolean;
   onDevAddClient?: () => void;
   onDevRemoveClient?: () => void;
+  onDevLessWait?: () => void;
+  onDevMoreWait?: () => void;
   onDevClearQueue?: () => void;
   onDevResetStore?: () => void;
 }
@@ -343,6 +345,8 @@ export default function ScreenVendor({
   isDevMode,
   onDevAddClient,
   onDevRemoveClient,
+  onDevLessWait,
+  onDevMoreWait,
   onDevClearQueue,
   onDevResetStore,
 }: ScreenVendorProps) {
@@ -553,6 +557,8 @@ export default function ScreenVendor({
             [
               { label: '− client', fn: onDevRemoveClient },
               { label: '+ client', fn: onDevAddClient },
+              { label: '− attente', fn: onDevLessWait },
+              { label: '+ attente', fn: onDevMoreWait },
               { label: 'Vider la file', fn: onDevClearQueue },
             ] as const
           ).map(

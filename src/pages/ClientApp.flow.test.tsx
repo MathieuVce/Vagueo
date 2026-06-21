@@ -13,7 +13,7 @@ vi.mock('../hooks/usePush', () => ({
 
 describe('ClientApp — flux utilisateur', () => {
   const mockStand = { id: 'stand-1', is_open: true, name: 'Test Stand', min_per_person: 3 };
-  const baseDerived = { estimatedMin: 5, waitingStatus: 'green', positionAhead: 2 };
+  const baseDerived = { estimatedMin: 5, waitingStatus: 'green', wavesAhead: 0 };
 
   let actions: any;
 
@@ -89,11 +89,11 @@ describe('ClientApp — flux utilisateur', () => {
 
   it('checkin → timeout → modal orange → décaler → modal se ferme', async () => {
     vi.useFakeTimers();
-    // positionAhead: 0 → orangePromptMs = 180s ; sinon (2 personnes × 3min) = 360s
+    // wavesAhead: 0 → orangePromptMs = 180s (plancher ORANGE_PROMPT_MS)
     (useClientSession as any).mockReturnValue([
       { status: 'checkin', delay_used: false, called_at: { toMillis: () => 1000 } },
       'checkin',
-      { ...baseDerived, positionAhead: 0 },
+      { ...baseDerived, wavesAhead: 0 },
       actions,
     ]);
     await act(async () => {
@@ -117,7 +117,7 @@ describe('ClientApp — flux utilisateur', () => {
     (useClientSession as any).mockReturnValue([
       { status: 'checkin', delay_used: true, called_at: { toMillis: () => 1000 } },
       'checkin',
-      { ...baseDerived, positionAhead: 0 },
+      { ...baseDerived, wavesAhead: 0 },
       actions,
     ]);
     await act(async () => {

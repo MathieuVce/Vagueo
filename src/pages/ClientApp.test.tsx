@@ -14,7 +14,7 @@ vi.mock('../hooks/usePush', () => ({
 describe('ClientApp', () => {
   const mockStand: any = { id: 'test-stand', is_open: true, name: 'Test Stand', min_per_person: 3 };
   const mockClient: any = { status: 'waiting', delay_used: false };
-  const mockDerived: any = { estimatedMin: 12, waitingStatus: 'red', positionAhead: 0 };
+  const mockDerived: any = { estimatedMin: 12, waitingStatus: 'red', wavesAhead: 0 };
   const mockActions: any = {
     join: vi.fn(),
     leave: vi.fn(),

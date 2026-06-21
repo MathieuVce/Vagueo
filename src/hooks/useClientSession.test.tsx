@@ -10,6 +10,7 @@ import {
   getDocs,
   writeBatch,
 } from 'firebase/firestore';
+import { HEARTBEAT_INTERVAL_MS } from '../tokens.ts';
 
 describe('useClientSession', () => {
   const mockStand: any = { is_open: true, is_paused: false, min_per_person: 2 };
@@ -270,5 +271,64 @@ describe('useClientSession', () => {
       expect.anything(),
       expect.objectContaining({ rating_count: expect.anything(), rating_sum: expect.anything() }),
     );
+  });
+
+  // ─── Heartbeat de présence ─────────────────────────────────────
+
+  it('heartbeat: écrit last_seen à l’entrée en file puis à chaque intervalle', async () => {
+    vi.useFakeTimers();
+    try {
+      const result = await boot();
+      await act(async () => {
+        fireClientSnapshot(result, { status: 'waiting', queue_position: 2 });
+      });
+      // beat immédiat
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ last_seen: expect.anything() }),
+      );
+      vi.mocked(updateDoc).mockClear();
+      await act(async () => {
+        vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS + 100);
+      });
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ last_seen: expect.anything() }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('heartbeat: ne bat pas sur le splash (pas en file)', async () => {
+    vi.useFakeTimers();
+    try {
+      await boot(); // aucun snapshot → splash
+      vi.mocked(updateDoc).mockClear();
+      await act(async () => {
+        vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS * 2);
+      });
+      expect(updateDoc).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('heartbeat: ne bat pas quand l’onglet est masqué', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    try {
+      const result = await boot();
+      await act(async () => {
+        fireClientSnapshot(result, { status: 'claimed', queue_position: 1 });
+      });
+      expect(updateDoc).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ last_seen: expect.anything() }),
+      );
+    } finally {
+      delete (document as unknown as { hidden?: boolean }).hidden;
+      vi.useRealTimers();
+    }
   });
 });

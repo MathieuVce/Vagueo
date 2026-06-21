@@ -10,7 +10,7 @@ Trois rôles : **client** (anonyme), **vendeur** (Google), **admin** (Google).
 - **React 18**, **TypeScript 6 strict**, **Vite 8**, **Tailwind v4**, **Firebase/Firestore**, **Vitest**.
 - `npm run dev` — dev local. `npm run build` — `tsc --noEmit && vite build`.
 - `npm run typecheck` — `tsc --noEmit`. `npm run lint` (ESLint) · `npm run format` (Prettier, `format:check` pour vérifier).
-- `npm test` — Vitest watch. `vitest run` — une passe. Ciblé : `test:hooks`, `test:pages`, `test:screens`, `test:ui`, `test:components`, `test:flows`. `npm run coverage`.
+- `npm test` — Vitest watch. `vitest run` — une passe. Ciblé : `test:hooks`, `test:pages`, `test:screens`, `test:ui`, `test:components`, `test:flows`, `test:wave` (maths de vague + attente selon affluence, `test:wave:watch` en continu). `npm run coverage`.
 - `npm run test:rules` — tests des règles Firestore contre l'émulateur (Java requis). Vit dans `tests/`, config séparée [vitest.rules.config.ts](vitest.rules.config.ts) sans les mocks.
 - `npm run knip` — détecte exports / dépendances / fichiers morts (audit manuel, pas dans la CI).
 - `npm run check` — `typecheck && lint && vitest run` (porte de qualité complète, aussi lancée par le hook **pre-push**).
@@ -33,7 +33,10 @@ Principe : **agir, se vérifier soi-même, ne demander que les vrais choix produ
 - **Décider avec des défauts raisonnables** quand le code/les conventions tranchent ; réserver les questions à l'utilisateur aux vrais arbitrages produit (UX, comportement attendu).
 - **Lectures ciblées** : lire uniquement la portion utile (offset/limit), pas le fichier entier ; ne pas relire un fichier qu'on vient d'éditer ; ne jamais lire/grepper les chemins exclus (section suivante).
 - **Paralléliser** les appels d'outils indépendants dans un même tour.
-- **Diffs petits et ciblés** ; ne jamais régénérer un fichier > 30 lignes — produire uniquement les blocs modifiés. Le reformatage Prettier de masse se committe à part (`chore: format`).
+- **Éditer par diff, pas par réécriture** : `Edit`/`MultiEdit` par défaut. `Write` est réservé aux **fichiers neufs** ou très courts (≤ 30 lignes). Un **hook PreToolUse** ([.claude/hooks/write-guard.sh](.claude/hooks/write-guard.sh)) bloque tout `Write` qui écraserait un fichier existant de plus de 30 lignes → repasser par `Edit`.
+  - `old_string` minimal mais unique : la plus petite ancre qui identifie l'emplacement, sans recopier les lignes alentour inchangées.
+  - Ne pas toucher imports/fonctions/blocs hors du changement ; ne pas réindenter ni reformater au passage (Prettier s'en charge au commit).
+  - Plusieurs petites éditions ciblées valent mieux qu'une grosse réécriture. Le reformatage de masse se committe à part (`chore: format`).
 - **Réponses concises** : pas d'intro ni de politesse, droit au code/commande. Clore par un **récap de 1 à 3 lignes** : ce qui a changé + état des vérifs (tsc/lint/test).
 
 ## Commits
@@ -82,7 +85,8 @@ src/
     useVendorAuth.ts    Auth Google vendeur : isOwner / isUnclaimed / isAuthorized
     useVendorStandLookup.ts  Retrouve le stand d'un vendeur connecté sans ?stand= dans l'URL
     useQueueCounts.ts   Comptage temps réel (présents / en attente) côté vendeur
-    useDevHelpers.ts    Outils dev (ajout/retrait/purge de clients factices)
+    useQueueReaper.ts   Filet de sécurité vendeur : purge les fantômes (onglet fermé sans clic)
+    useDevHelpers.ts    Outils dev : +/- clients factices, +/- attente (avance/recul de current_wave), purge
     useClock.ts         Horloge partagée. usePush.ts  Permissions + notifications push (SW)
 
   screens/              Écrans plein cadre (présentation pure, pilotés par les pages)
@@ -100,33 +104,69 @@ src/
 
 ## Modèle de données Firestore
 
-- **`stands/{standId}`** — config + état temps réel d'un stand : `is_open`, `is_paused`, `current_wave`,
-  `queue_counter`, débit (`flow_rate`, `flow_slow`, `flow_sprint`, `min_per_person`), apprentissage
-  (`service_ms_ema`, `service_count`), liaison vendeur (`vendor_uid`, `vendor_email`), `status`.
+- **`stands/{standId}`** — config + état temps réel d'un stand : `is_open`, `is_paused`, `current_wave`
+  (vague en cours de passage, avancée auto par le vendeur), `fill_wave`/`fill_count` (vague en cours
+  d'assemblage + remplissage, plafond `WAVE_SIZE`), `queue_counter` (legacy), débit (`flow_rate`,
+  `flow_slow`, `flow_sprint`, `min_per_person`), apprentissage (`service_ms_ema`, `service_count`),
+  liaison vendeur (`vendor_uid`, `vendor_email`), `status`.
 - **`queue/{uid}`** — un doc par client en file (clé = uid anonyme). Supprimé à la sortie
-  (`leave`/`done`/`restart` font un `deleteDoc`, pas un `status: done`). Champs : `queue_position`,
-  `status` (`waiting`|`orange`|`claimed`|`done`), `stand_id`, horodatages.
+  (`leave`/`done`/`restart` font un `deleteDoc`, pas un `status: done`). Champs : `wave_number` (sa vague,
+  fixée à l'arrivée), `status` (`waiting`|`orange`|`claimed`|`done`), `stand_id`, `last_seen`, horodatages.
 - **`stands/{standId}/history/{id}`** — archive d'un service terminé (pour les stats). Écrit **avant**
   la suppression du doc queue, dans la transaction qui met à jour l'EMA.
+
+## Modèle par vagues (pas de numéro individuel)
+
+Le client ne reçoit **pas** de position/numéro : il rejoint une **vague**, et c'est la vague entière
+qui passe. Affectation **hybride** (`join`) : la vague d'assemblage suit `current_wave` (fenêtre de
+temps), plafonnée à `WAVE_SIZE` (le surplus déborde sur la vague suivante). `WAVE_LEAD = 0` → la vague
+d'assemblage **est** `current_wave`, donc « groupe servi = `current_wave` », le premier groupe = vague 0,
+et `wavesAhead` n'est pas gonflé (estimations justes). Avance **auto** : le vendeur incrémente
+`current_wave` toutes les `waveIntervalMs`. La couleur anti-fraude (`secure_color`) tourne par vague →
+tous les membres d'une vague affichent la même quand c'est leur tour.
 
 ## Parcours client (étapes, `useClientSession`)
 
 `loading` → `splash` (pas en file) → `waiting` (en file) → `checkin` (statut `orange`,
 « c'est bientôt ton tour ») → `validation` (statut `claimed`, au stand) → service terminé.
-Le passage en **orange** se déclenche quand `temps d'attente estimé ≤ call_ahead_min × 1.3`
-(et non plus à un comptage fixe).
+Le passage en **orange** se déclenche « une vague à l'avance » : quand
+`wave_number − current_wave ≤ CALL_AHEAD_WAVES` (= 1). Attente estimée = `wavesAhead × WAVE_SIZE ×
+min_per_person`. Décaler (`requestDelay`) repousse de `DELAY_WAVES` vague(s).
 
 ## Pièges (journal vivant)
 
 > À chaque acquis non évident (gotcha, décision d'archi, piège résolu), ajouter une puce ici
 > plutôt que de le re-déduire à la prochaine session. Court et actionnable.
 
-- `positionAhead` initialisé à `null` (pas `0`) : `null` = requête pas encore revenue, `0` = vraiment
-  premier. Distinguer les deux évite un faux passage en orange au premier rendu.
+- Modèle par vagues : `wavesAhead = wave_number − current_wave` (calcul direct, plus de requête
+  « personnes devant »). Orange dès `wavesAhead ≤ CALL_AHEAD_WAVES`. `join` est une transaction qui
+  affecte la vague via `fill_wave`/`fill_count` (repart de `current_wave + WAVE_LEAD` quand la vague a
+  avancé = nouvelle fenêtre de temps ; déborde sur la vague suivante au-delà de `WAVE_SIZE`).
+- Test dev rapide (un seul onglet) : en `npm run dev`, une barre DEV sur l'écran **client** (boutons
+  Bleu / Orange / Validation) force le statut de sa propre session via `actions.devSet` (édite son doc
+  queue, autorisé par les règles). Masquée en prod et en test (`import.meta.env.MODE !== 'test'`). Côté
+  vendeur, `− attente / + attente` font avancer/reculer `current_wave` pour piloter un onglet client tiers.
+- Conséquence du « avance auto seule » : la cadence est fixe (`waveIntervalMs`), donc un client seul peut
+  attendre ~une vague avant d'être servi. Pour réduire ce délai, baisser `min_per_person` (slider) ou
+  réintroduire une avance manuelle vendeur.
 - Sorties de file = `deleteDoc` (jamais `status: done`) sinon la collection `queue` accumule des docs
   morts. Les stats lisent l'historique, pas la file, donc rien à craindre côté chiffres.
 - Apprentissage EMA : `setFlowRate` (bouton ± affluence) **réinitialise** l'EMA (`deleteField` +
   `service_count: 0`) pour que le slider reprenne effet immédiat.
+- EMA bornée : un service mesuré au-delà de `EMA_OUTLIER_FACTOR` × (EMA en place, ou base du slider au
+  démarrage) est **plafonné** avant d'alimenter la moyenne — un client qui laisse l'écran ouvert sans
+  cliquer « terminé » ne pollue plus le calcul.
+- Nettoyage des fantômes : le self-timeout client ([ClientApp](src/pages/ClientApp.tsx)) n'agit que si
+  l'onglet du client est ouvert. [useQueueReaper](src/hooks/useQueueReaper.ts) (session vendeur, droits
+  Google) purge en dernier recours les « claimed » jamais terminés, les « orange » sans réponse, et les
+  « waiting » abandonnés (`WAITING_STALE_MS`, délai très long). Écrit un `timeout_*` dans l'historique
+  (`timeout_service`/`timeout_checkin`/`timeout_waiting`) puis `deleteDoc`. Pas de backend.
+- Heartbeat de présence : tant qu'il est en file et que l'onglet est visible, le client rafraîchit
+  `last_seen` toutes les `HEARTBEAT_INTERVAL_MS` ([useClientSession](src/hooks/useClientSession.ts)). Le
+  reaper s'en sert en priorité : un onglet vif (`last_seen` < `HEARTBEAT_STALE_MS`) n'est **jamais** purgé
+  (protège un service long), un « claimed » muet l'est en quelques minutes. Repli sur les seuils coarse
+  (claimed_at/called_at/timestamp) pour les clients sans heartbeat ou en arrière-plan (timers bridés).
+  Aucune règle Firestore à changer : le client peut déjà écrire son propre doc queue.
 - Règles Firestore : un client anonyme ne peut écrire que `queue_counter`, `rating_*` et les champs EMA
   sur le stand ; il ne peut supprimer que **son** doc queue. Garder [firestore.rules](firestore.rules)
   synchro avec toute nouvelle écriture client.

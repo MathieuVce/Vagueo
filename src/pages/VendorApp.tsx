@@ -3,6 +3,7 @@ import { useStand } from '../hooks/useStand.ts';
 import { useVendorAuth } from '../hooks/useVendorAuth.ts';
 import { useClock } from '../hooks/useClock.ts';
 import { useQueueCounts } from '../hooks/useQueueCounts.ts';
+import { useQueueReaper } from '../hooks/useQueueReaper.ts';
 import { useDevHelpers } from '../hooks/useDevHelpers.ts';
 import { useVendorStandLookup } from '../hooks/useVendorStandLookup.ts';
 import { waveIntervalMs, PALETTE, FONT, STAND_ID } from '../tokens.ts';
@@ -36,8 +37,11 @@ export default function VendorApp() {
   const [signingIn, setSigningIn] = useState(false);
 
   const { presentCount, waitingCount } = useQueueCounts(isAuthorized);
+  // Filet de sécurité : purge les clients qui ont fermé l'onglet sans cliquer.
+  useQueueReaper(isAuthorized, stand?.min_per_person ?? 3, stand?.is_paused ?? false);
   const standLookup = useVendorStandLookup(user);
-  const { devAddClient, devRemoveClient, devClearQueue, devResetStore } = useDevHelpers();
+  const { devAddClient, devRemoveClient, devLessWait, devMoreWait, devClearQueue, devResetStore } =
+    useDevHelpers();
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const waitingRef = useRef(0);
@@ -261,6 +265,8 @@ export default function VendorApp() {
         isDevMode={DEV}
         onDevAddClient={DEV ? devAddClient : undefined}
         onDevRemoveClient={DEV ? devRemoveClient : undefined}
+        onDevLessWait={DEV ? devLessWait : undefined}
+        onDevMoreWait={DEV ? devMoreWait : undefined}
         onDevClearQueue={DEV ? devClearQueue : undefined}
         onDevResetStore={DEV ? () => devResetStore(() => {}) : undefined}
       />

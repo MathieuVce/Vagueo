@@ -28,9 +28,9 @@ service cloud.firestore {
            || !('vendor_uid' in request.resource.data)
          ))
         ||
-        // Client anonyme : queue_counter, notes, EMA
+        // Client anonyme : compteurs de file/vagues, notes, EMA
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'queue_counter',
+          'queue_counter', 'fill_wave', 'fill_count',
           'rating_count', 'rating_sum',
           'service_ms_ema', 'service_count', 'min_per_person'
         ])

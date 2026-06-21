@@ -22,6 +22,8 @@ import {
 const DEFAULT_STAND: Omit<Stand, 'secure_color'> = {
   current_wave: 0,
   queue_counter: 0,
+  fill_wave: 0,
+  fill_count: 0,
   is_paused: false,
   is_open: false,
   flow_rate: FLOW_RATE_DEFAULT,

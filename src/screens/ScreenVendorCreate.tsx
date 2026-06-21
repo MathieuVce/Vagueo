@@ -44,6 +44,8 @@ export default function ScreenVendorCreate({ user, onCreated }: Props) {
       await setDoc(doc(db, 'stands', standId), {
         current_wave: 0,
         queue_counter: 0,
+        fill_wave: 0,
+        fill_count: 0,
         is_paused: false,
         is_open: false,
         flow_rate: FLOW_RATE_DEFAULT,

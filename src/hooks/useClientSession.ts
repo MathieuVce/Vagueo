@@ -18,10 +18,13 @@ import {
 import { auth, db } from '../firebase.ts';
 import {
   WAVE_SIZE,
+  WAVE_LEAD,
+  CALL_AHEAD_WAVES,
+  DELAY_WAVES,
   STAND_ID,
-  CALL_AHEAD_MIN_DEFAULT,
-  CALL_BUFFER_FACTOR,
   EMA_ALPHA,
+  EMA_OUTLIER_FACTOR,
+  HEARTBEAT_INTERVAL_MS,
   FLOW_RATE_DEFAULT,
   FLOW_SLOW_DEFAULT,
   FLOW_SPRINT_DEFAULT,
@@ -34,7 +37,7 @@ export type ClientStep = 'loading' | 'splash' | 'waiting' | 'checkin' | 'validat
 export interface DerivedValues {
   estimatedMin: number;
   waitingStatus: 'red' | 'orange';
-  positionAhead: number;
+  wavesAhead: number;
 }
 
 export interface RatingData {
@@ -50,6 +53,8 @@ export interface ClientActions {
   done: (reason?: ExitReason, ratingData?: RatingData) => Promise<void>;
   extend: () => Promise<void>;
   restart: () => Promise<void>;
+  // Dev uniquement : force le statut de SA propre session pour atteindre un écran.
+  devSet: (target: 'waiting' | 'orange' | 'claimed') => Promise<void>;
 }
 
 // Returns [client, step, derived, actions]
@@ -68,8 +73,6 @@ export function useClientSession(
   const [uid, setUid] = useState<string | null>(null);
   const [client, setClient] = useState<QueueEntry | null>(null);
   const [authReady, setReady] = useState(false);
-  // null = query not yet returned (avoids false-positive orange trigger on initial render)
-  const [positionAhead, setPositionAhead] = useState<number | null>(null);
 
   const standRef = doc(db, 'stands', STAND_ID || '__no_stand__');
   const historyCol = collection(db, 'stands', STAND_ID || '__no_stand__', 'history');
@@ -96,44 +99,43 @@ export function useClientSession(
     });
   }, [uid]);
 
-  // ─── Live position: active clients ahead of me ────────────────
-  useEffect(() => {
-    if (!uid || !client?.queue_position) {
-      setPositionAhead(null);
-      return;
-    }
-    const myPos = client.queue_position;
-    // Fix #1: filter by stand_id to support multi-stand deployments
-    const q = query(
-      collection(db, 'queue'),
-      where('stand_id', '==', STAND_ID),
-      where('status', 'in', ['waiting', 'orange', 'claimed']),
-    );
-    return onSnapshot(q, (snap) => {
-      const ahead = snap.docs.filter(
-        (d) => d.id !== uid && (d.data().queue_position ?? 0) < myPos,
-      ).length;
-      setPositionAhead(ahead);
-    });
-  }, [uid, client?.queue_position]);
-
-  // ─── Auto-call when estimated wait falls within the call-ahead window ─
-  // Guard: positionAhead=null means the query hasn't returned yet — skip to avoid
-  // triggering orange at position 0 before real data arrives.
-  // Threshold = call_ahead_min × 1.3 (buffer for travel time + non-app users).
+  // ─── Auto-call : passage en orange « une vague à l'avance » ────
+  // Plus de seuil position × temps : le client passe en orange dès que sa vague
+  // est à ≤ CALL_AHEAD_WAVES de la vague en cours (current_wave). La couleur
+  // anti-fraude (live, dérivée de current_wave) se synchronise quand sa vague
+  // devient courante.
   useEffect(() => {
     if (!uid || !client || client.status !== 'waiting' || client.called_at) return;
-    if (positionAhead === null) return;
-    const minPerPerson = stand?.min_per_person ?? 3;
-    const callAheadMin = stand?.call_ahead_min ?? CALL_AHEAD_MIN_DEFAULT;
-    const estimatedWaitMin = positionAhead * minPerPerson;
-    if (estimatedWaitMin <= callAheadMin * CALL_BUFFER_FACTOR) {
+    if (client.wave_number == null) return;
+    const cw = stand?.current_wave ?? 0;
+    if (client.wave_number - cw <= CALL_AHEAD_WAVES) {
       void updateDoc(doc(db, 'queue', uid), {
         status: 'orange',
         called_at: serverTimestamp(),
       });
     }
-  }, [positionAhead, client?.status, uid, stand?.min_per_person, stand?.call_ahead_min]);
+  }, [stand?.current_wave, client?.status, client?.wave_number, uid]);
+
+  // ─── Heartbeat de présence ─────────────────────────────────────
+  // Tant que le client est en file (waiting/orange/claimed) et que l'onglet est
+  // visible, on rafraîchit last_seen. Le reaper vendeur s'en sert pour purger
+  // précisément les onglets fermés (cf. useQueueReaper). On ne bat pas en
+  // arrière-plan : les navigateurs y bridant les timers, ce serait peu fiable.
+  useEffect(() => {
+    const status = client?.status;
+    if (!uid || (status !== 'waiting' && status !== 'orange' && status !== 'claimed')) return;
+    const beat = () => {
+      if (document.hidden) return;
+      void updateDoc(doc(db, 'queue', uid), { last_seen: serverTimestamp() });
+    };
+    beat(); // immédiat à l'entrée et à chaque changement de statut
+    const id = setInterval(beat, HEARTBEAT_INTERVAL_MS);
+    document.addEventListener('visibilitychange', beat);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', beat);
+    };
+  }, [uid, client?.status]);
 
   // ─── History write ─────────────────────────────────────────────
   // On completed service: uses a transaction to atomically read the current EMA,
@@ -175,15 +177,21 @@ export function useClientSession(
       await runTransaction(db, async (tx) => {
         const standSnap = await tx.get(standRef);
         const d = standSnap.data() ?? {};
-        const prevEma = (d.service_ms_ema as number | undefined) ?? serviceMsValue!;
-        const count = ((d.service_count as number | undefined) ?? 0) + 1;
-        const newEma = EMA_ALPHA * serviceMsValue! + (1 - EMA_ALPHA) * prevEma;
-        const emaMins = newEma / 60_000;
         const sliderBase = calcMinPerPerson(
           (d.flow_rate as number | undefined) ?? FLOW_RATE_DEFAULT,
           (d.flow_slow as number | undefined) ?? FLOW_SLOW_DEFAULT,
           (d.flow_sprint as number | undefined) ?? FLOW_SPRINT_DEFAULT,
         );
+        // Plafond anti-aberration : un service ne pèse pas plus de EMA_OUTLIER_FACTOR×
+        // la référence (EMA en place, ou base du slider pour les premiers services).
+        // Neutralise un client qui laisse l'écran ouvert sans cliquer « terminé »
+        // (service_ms gonflé à plusieurs heures).
+        const reference = (d.service_ms_ema as number | undefined) ?? sliderBase * 60_000;
+        const learnMs = Math.min(serviceMsValue!, EMA_OUTLIER_FACTOR * reference);
+        const prevEma = (d.service_ms_ema as number | undefined) ?? learnMs;
+        const count = ((d.service_count as number | undefined) ?? 0) + 1;
+        const newEma = EMA_ALPHA * learnMs + (1 - EMA_ALPHA) * prevEma;
+        const emaMins = newEma / 60_000;
         // Weight increases from 0 → 80 % over the first 30 services, then stays at 80 %.
         const weight = Math.min(0.8, count / 30);
         const newMinPerPerson = +(weight * emaMins + (1 - weight) * sliderBase).toFixed(2);
@@ -212,8 +220,9 @@ export function useClientSession(
 
   // ─── Actions ───────────────────────────────────────────────────
 
-  // Atomic transaction: increments the stand counter and creates the queue doc
-  // in one operation → no collision on concurrent joins.
+  // Affectation hybride à une vague (transaction atomique) : la vague
+  // d'assemblage suit current_wave (fenêtre de temps), plafonnée à WAVE_SIZE
+  // (le surplus déborde sur la vague suivante). Pas de numéro individuel.
   const join = useCallback(async () => {
     if (!uid || !stand || !stand.is_open || stand.is_paused) return;
     if (stand.max_queue_size != null && stand.max_queue_size > 0) {
@@ -227,13 +236,27 @@ export function useClientSession(
       if (snap.size >= stand.max_queue_size) return;
     }
     await runTransaction(db, async (tx) => {
-      const standSnap = await tx.get(standRef);
-      const position = ((standSnap.data()?.queue_counter ?? 0) as number) + 1;
-      tx.update(standRef, { queue_counter: position });
+      const s = (await tx.get(standRef)).data() ?? {};
+      const cw = (s.current_wave as number | undefined) ?? 0;
+      const base = cw + WAVE_LEAD; // vague la plus tôt rejoignable
+      let fillWave = (s.fill_wave as number | undefined) ?? 0;
+      let fillCount = (s.fill_count as number | undefined) ?? 0;
+      if (fillWave < base) {
+        // la vague a avancé depuis le dernier ajout → nouvelle fenêtre de temps
+        fillWave = base;
+        fillCount = 0;
+      }
+      if (fillCount >= WAVE_SIZE) {
+        // plafond hybride atteint → on ouvre la vague suivante
+        fillWave += 1;
+        fillCount = 0;
+      }
+      fillCount += 1;
+      tx.update(standRef, { fill_wave: fillWave, fill_count: fillCount });
       tx.set(doc(db, 'queue', uid), {
         uid,
         stand_id: STAND_ID,
-        queue_position: position,
+        wave_number: fillWave,
         status: 'waiting',
         has_confirmed_presence: false,
         delay_used: false,
@@ -242,7 +265,8 @@ export function useClientSession(
     });
   }, [uid, stand]);
 
-  // Pushes the client to the back of the queue (behind everyone currently active)
+  // Décale le client de DELAY_WAVES vague(s), derrière la vague en assemblage
+  // (utilisable une seule fois).
   const requestDelay = useCallback(async () => {
     if (!uid || !client || client.delay_used) return;
     if (stand?.max_delayed != null && stand.max_delayed > 0) {
@@ -256,17 +280,11 @@ export function useClientSession(
       );
       if (delaySnap.size >= stand.max_delayed) return;
     }
-    // Fix #1: filter by stand_id
-    const qSnap = await getDocs(
-      query(
-        collection(db, 'queue'),
-        where('stand_id', '==', STAND_ID),
-        where('status', 'in', ['waiting', 'orange', 'claimed']),
-      ),
-    );
-    const maxPos = qSnap.docs.reduce((m, d) => Math.max(m, d.data().queue_position ?? 0), 0);
+    const cw = stand?.current_wave ?? 0;
+    const fillWave = stand?.fill_wave ?? cw + WAVE_LEAD;
+    const newWave = Math.max(client.wave_number ?? cw, fillWave) + DELAY_WAVES;
     await updateDoc(doc(db, 'queue', uid), {
-      queue_position: maxPos + WAVE_SIZE,
+      wave_number: newWave,
       delay_used: true,
       status: 'waiting',
       called_at: deleteField(),
@@ -318,19 +336,44 @@ export function useClientSession(
     await deleteDoc(doc(db, 'queue', uid));
   }, [uid]);
 
+  // Dev : place sa propre session sur l'écran voulu en éditant son doc queue
+  // (autorisé par les règles : un client peut écrire son propre doc). bleu =
+  // 'waiting' (2 vagues d'écart), orange = 'orange', validation = 'claimed'.
+  const devSet = useCallback(
+    async (target: 'waiting' | 'orange' | 'claimed') => {
+      if (!uid) return;
+      const cw = stand?.current_wave ?? 0;
+      const ref = doc(db, 'queue', uid);
+      if (target === 'waiting') {
+        await updateDoc(ref, { status: 'waiting', wave_number: cw + 2, called_at: deleteField() });
+      } else if (target === 'orange') {
+        await updateDoc(ref, {
+          status: 'orange',
+          wave_number: cw + 1,
+          called_at: serverTimestamp(),
+        });
+      } else {
+        await updateDoc(ref, { status: 'claimed', claimed_at: serverTimestamp() });
+      }
+    },
+    [uid, stand?.current_wave],
+  );
+
   // ─── Derived values ────────────────────────────────────────────
   const step = deriveStep(client, authReady);
-  const minPerPerson = stand?.min_per_person ?? 2.5;
-  const resolvedAhead = positionAhead ?? 0;
-  // Wait = people ahead × time per person (updates in real time)
-  const estimatedMin = Math.max(1, Math.round(resolvedAhead * minPerPerson));
-  const waitingStatus: 'red' | 'orange' = estimatedMin < 5 ? 'orange' : 'red';
+  const oneWaveMin = WAVE_SIZE * (stand?.min_per_person ?? 3); // durée d'écoulement d'une vague (min)
+  const currentWave = stand?.current_wave ?? 0;
+  const wavesAhead =
+    client?.wave_number != null ? Math.max(0, client.wave_number - currentWave) : 0;
+  // Attente = vagues devant × durée d'une vague (mise à jour temps réel)
+  const estimatedMin = Math.max(1, Math.round(wavesAhead * oneWaveMin));
+  const waitingStatus: 'red' | 'orange' = wavesAhead <= CALL_AHEAD_WAVES ? 'orange' : 'red';
 
   return [
     client,
     step,
-    { estimatedMin, waitingStatus, positionAhead: resolvedAhead },
-    { join, requestDelay, leave, confirmPresence, done, extend, restart },
+    { estimatedMin, waitingStatus, wavesAhead },
+    { join, requestDelay, leave, confirmPresence, done, extend, restart, devSet },
   ];
 }
 
