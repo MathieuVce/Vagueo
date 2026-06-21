@@ -4,7 +4,11 @@ import ScreenQRCode from './ScreenQRCode';
 
 // Render a real SVG so qrRef.current.querySelector('svg') works in handlePrint/handleDownload
 vi.mock('qrcode.react', () => ({
-  QRCodeSVG: () => <svg data-testid="qrsvg"><rect x="0" y="0" width="100" height="100" /></svg>,
+  QRCodeSVG: () => (
+    <svg data-testid="qrsvg">
+      <rect x="0" y="0" width="100" height="100" />
+    </svg>
+  ),
 }));
 
 const mockWin = {
@@ -37,7 +41,9 @@ describe('ScreenQRCode', () => {
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(mockCtx as any);
-    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,mock');
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue(
+      'data:image/png;base64,mock',
+    );
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   });
 
@@ -83,7 +89,9 @@ describe('ScreenQRCode', () => {
 
   it('opens print window with stand name in title', async () => {
     render(<ScreenQRCode stand={mockStand} onClose={() => {}} />);
-    await act(async () => { fireEvent.click(screen.getByText(/Imprimer/i)); });
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Imprimer/i));
+    });
     expect(window.open).toHaveBeenCalledWith('', '_blank', expect.any(String));
     expect(mockWin.document.write).toHaveBeenCalledWith(expect.stringContaining('Test Stand'));
     expect(mockWin.document.close).toHaveBeenCalled();
@@ -94,7 +102,9 @@ describe('ScreenQRCode', () => {
     window.open = vi.fn(() => null as any);
     window.alert = vi.fn();
     render(<ScreenQRCode stand={mockStand} onClose={() => {}} />);
-    await act(async () => { fireEvent.click(screen.getByText(/Imprimer/i)); });
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Imprimer/i));
+    });
     expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('popup'));
   });
 
@@ -106,7 +116,9 @@ describe('ScreenQRCode', () => {
     class MockImage {
       onload: (() => void) | null = null;
       private _src = '';
-      get src() { return this._src; }
+      get src() {
+        return this._src;
+      }
       set src(v: string) {
         this._src = v;
         Promise.resolve().then(() => this.onload?.());
@@ -115,7 +127,9 @@ describe('ScreenQRCode', () => {
     vi.stubGlobal('Image', MockImage);
 
     render(<ScreenQRCode stand={mockStand} onClose={() => {}} />);
-    await act(async () => { fireEvent.click(screen.getByText(/Télécharger/i)); });
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Télécharger/i));
+    });
 
     expect(mockCtx.fillRect).toHaveBeenCalled();
     expect(mockCtx.drawImage).toHaveBeenCalled();
@@ -128,23 +142,36 @@ describe('ScreenQRCode', () => {
 
   it('calls navigator.share when available', async () => {
     render(<ScreenQRCode stand={mockStand} onClose={() => {}} />);
-    await act(async () => { fireEvent.click(screen.getByText(/Partager le lien/i)); });
-    expect(navigator.share).toHaveBeenCalledWith(expect.objectContaining({ url: expect.any(String) }));
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Partager le lien/i));
+    });
+    expect(navigator.share).toHaveBeenCalledWith(
+      expect.objectContaining({ url: expect.any(String) }),
+    );
   });
 
   it('shows "Partage…" state while sharing', async () => {
     let resolveShare!: () => void;
-    (navigator.share as any) = vi.fn(() => new Promise<void>(r => { resolveShare = r; }));
+    (navigator.share as any) = vi.fn(
+      () =>
+        new Promise<void>((r) => {
+          resolveShare = r;
+        }),
+    );
     render(<ScreenQRCode stand={mockStand} onClose={() => {}} />);
     fireEvent.click(screen.getByText(/Partager le lien/i));
     expect(screen.getByText(/Partage…/i)).toBeInTheDocument();
-    await act(async () => { resolveShare(); });
+    await act(async () => {
+      resolveShare();
+    });
   });
 
   it('falls back to clipboard when navigator.share is undefined', async () => {
     Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
     render(<ScreenQRCode stand={mockStand} onClose={() => {}} />);
-    await act(async () => { fireEvent.click(screen.getByText(/Partager le lien/i)); });
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Partager le lien/i));
+    });
     expect(navigator.clipboard.writeText).toHaveBeenCalled();
   });
 
@@ -152,21 +179,27 @@ describe('ScreenQRCode', () => {
     const err = Object.assign(new Error('aborted'), { name: 'AbortError' });
     (navigator.share as any) = vi.fn().mockRejectedValue(err);
     render(<ScreenQRCode stand={mockStand} onClose={() => {}} />);
-    await act(async () => { fireEvent.click(screen.getByText(/Partager le lien/i)); });
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Partager le lien/i));
+    });
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
   });
 
   it('copies to clipboard when share throws non-AbortError', async () => {
     (navigator.share as any) = vi.fn().mockRejectedValue(new Error('denied'));
     render(<ScreenQRCode stand={mockStand} onClose={() => {}} />);
-    await act(async () => { fireEvent.click(screen.getByText(/Partager le lien/i)); });
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Partager le lien/i));
+    });
     expect(navigator.clipboard.writeText).toHaveBeenCalled();
   });
 
   it('shows "✓ Lien copié !" after clipboard write', async () => {
     Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
     render(<ScreenQRCode stand={mockStand} onClose={() => {}} />);
-    await act(async () => { fireEvent.click(screen.getByText(/Partager le lien/i)); });
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Partager le lien/i));
+    });
     expect(screen.getByText(/Lien copié/i)).toBeInTheDocument();
   });
 });

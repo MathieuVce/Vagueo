@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest",
     "test:hooks": "vitest run src/hooks",
     "test:pages": "vitest run src/pages",
@@ -16,7 +19,22 @@
     "test:ui": "vitest run src/ui",
     "test:components": "vitest run src/components",
     "test:flows": "vitest run src/pages/*.flow.test.tsx",
-    "coverage": "vitest run --coverage"
+    "test:wave": "vitest run src/tokens.test.ts src/hooks/useClientSession.affluence.test.tsx",
+    "test:wave:watch": "vitest src/tokens.test.ts src/hooks/useClientSession.affluence.test.tsx",
+    "coverage": "vitest run --coverage",
+    "knip": "knip",
+    "test:rules": "firebase emulators:exec --only firestore --project=demo-vagueo \"vitest run --config vitest.rules.config.ts\"",
+    "check": "npm run typecheck && npm run lint && vitest run",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,mjs,json,css,md,html}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
@@ -27,7 +45,10 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^3.0.4",
     "@tailwindcss/vite": "^4.3.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -37,9 +58,15 @@
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.6",
     "eslint": "^10.3.0",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "firebase-tools": "^14.27.0",
+    "husky": "^9.1.7",
     "jsdom": "^29.1.1",
+    "knip": "^6.17.1",
+    "lint-staged": "^17.0.7",
+    "prettier": "^3.8.4",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.3",

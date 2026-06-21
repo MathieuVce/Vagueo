@@ -29,7 +29,9 @@ describe('DevModeChoice', () => {
   });
 
   it('shows error message when provided', () => {
-    render(<DevModeChoice onTestMode={() => {}} onGoogleMode={() => {}} error="Connexion impossible." />);
+    render(
+      <DevModeChoice onTestMode={() => {}} onGoogleMode={() => {}} error="Connexion impossible." />,
+    );
     expect(screen.getByText(/Connexion impossible/i)).toBeInTheDocument();
   });
 });

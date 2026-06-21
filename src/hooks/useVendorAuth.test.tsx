@@ -1,7 +1,13 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useVendorAuth } from './useVendorAuth';
-import { onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut,
+} from 'firebase/auth';
 
 describe('useVendorAuth', () => {
   beforeEach(() => {
@@ -55,28 +61,36 @@ describe('useVendorAuth', () => {
   it('falls back to signInWithRedirect when popup is blocked', async () => {
     (signInWithPopup as any).mockRejectedValueOnce({ code: 'auth/popup-blocked' });
     const { result } = renderHook(() => useVendorAuth(null));
-    await act(async () => { await result.current.signIn(); });
+    await act(async () => {
+      await result.current.signIn();
+    });
     expect(signInWithRedirect).toHaveBeenCalled();
   });
 
   it('falls back to signInWithRedirect when popup request is cancelled', async () => {
     (signInWithPopup as any).mockRejectedValueOnce({ code: 'auth/cancelled-popup-request' });
     const { result } = renderHook(() => useVendorAuth(null));
-    await act(async () => { await result.current.signIn(); });
+    await act(async () => {
+      await result.current.signIn();
+    });
     expect(signInWithRedirect).toHaveBeenCalled();
   });
 
   it('sets error for unhandled auth failures', async () => {
     (signInWithPopup as any).mockRejectedValueOnce({ code: 'auth/network-request-failed' });
     const { result } = renderHook(() => useVendorAuth(null));
-    await act(async () => { await result.current.signIn(); });
+    await act(async () => {
+      await result.current.signIn();
+    });
     expect(result.current.error).toBe('Connexion impossible. Réessayez.');
   });
 
   it('sets no error when popup closed by user', async () => {
     (signInWithPopup as any).mockRejectedValueOnce({ code: 'auth/popup-closed-by-user' });
     const { result } = renderHook(() => useVendorAuth(null));
-    await act(async () => { await result.current.signIn(); });
+    await act(async () => {
+      await result.current.signIn();
+    });
     expect(result.current.error).toBeNull();
     expect(signInWithRedirect).not.toHaveBeenCalled();
   });
@@ -90,7 +104,9 @@ describe('useVendorAuth', () => {
       return () => {};
     });
     const { result } = renderHook(() => useVendorAuth(stand));
-    act(() => { authCb(user); });
+    act(() => {
+      authCb(user);
+    });
     return result;
   }
 

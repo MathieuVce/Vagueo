@@ -1,6 +1,7 @@
 # Vaguéo — Guide de déploiement
 
 ## Prérequis
+
 - Node.js 20+
 - Compte Firebase (gratuit — plan Spark suffit sauf pour les notifications push en arrière-plan)
 - Compte Vercel (gratuit)
@@ -14,16 +15,19 @@
 3. Désactiver Google Analytics (optionnel)
 
 ### Firestore
+
 - **Build → Firestore Database → Create database**
 - Mode : **Production** (on ajoutera les règles ci-dessous)
 - Région : `europe-west1` (ou la plus proche)
 
 ### Authentication
+
 - **Build → Authentication → Get started**
 - Activer **Anonymous** (sign-in providers)
 - Activer **Google** (sign-in providers) → mettre ton email de support → Save
 
 ### Règles Firestore
+
 Dans **Firestore → Rules**, coller le contenu du fichier [`firestore.rules`](./firestore.rules) du repo.
 
 Les règles de production couvrent : lecture publique des stands, écriture réservée au vendeur propriétaire, incrémentation du compteur autorisée aux clients anonymes, lecture de l'historique réservée aux comptes Google.
@@ -64,6 +68,7 @@ npm run dev
 ## 4. Déploiement Vercel
 
 ### Via GitHub (recommandé)
+
 1. Push ce repo sur GitHub
 2. Va sur [vercel.com/new](https://vercel.com/new) → importer le repo
 3. **Framework Preset** : Vite (détecté automatiquement)
@@ -71,6 +76,7 @@ npm run dev
 5. Cliquer **Deploy** → URL publique en 2 minutes
 
 ### Via CLI
+
 ```bash
 npm i -g vercel
 vercel --prod
@@ -80,11 +86,11 @@ vercel --prod
 
 ## 5. URLs de l'application
 
-| URL | Usage |
-|-----|-------|
-| `https://ton-app.vercel.app/` | QR code du stand → écran client |
+| URL                                 | Usage                                            |
+| ----------------------------------- | ------------------------------------------------ |
+| `https://ton-app.vercel.app/`       | QR code du stand → écran client                  |
 | `https://ton-app.vercel.app/vendor` | Dashboard vendeur (sur le smartphone du vendeur) |
-| `https://ton-app.vercel.app/admin` | Dashboard admin — restreint à `VITE_ADMIN_EMAIL` |
+| `https://ton-app.vercel.app/admin`  | Dashboard admin — restreint à `VITE_ADMIN_EMAIL` |
 
 Le QR code sur l'affiche doit pointer vers **`/`** (l'URL publique Vercel).
 

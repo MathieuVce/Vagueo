@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { Segment } from './Segment';
 
 describe('Segment', () => {
-  const options = [
+  const options: [{ label: string; value: string }, { label: string; value: string }] = [
     { label: 'Option A', value: 'a' },
     { label: 'Option B', value: 'b' },
   ];

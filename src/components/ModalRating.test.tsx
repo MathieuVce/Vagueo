@@ -14,14 +14,14 @@ describe('ModalRating', () => {
     // There are 5 stars. Let's click the 4th one.
     const stars = screen.getAllByText('★');
     fireEvent.click(stars[3]);
-    
+
     // It should show feedback field now
     const textarea = screen.getByPlaceholderText(/Un axe d'amélioration/i);
     expect(textarea).toBeInTheDocument();
-    
+
     fireEvent.change(textarea, { target: { value: 'Great!' } });
     fireEvent.click(screen.getByText(/Envoyer mon avis/i));
-    
+
     expect(handleSubmit).toHaveBeenCalledWith(4, 'Great!');
   });
 

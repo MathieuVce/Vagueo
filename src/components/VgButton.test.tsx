@@ -16,7 +16,11 @@ describe('VgButton', () => {
   });
 
   it('shows children content (e.g. icon)', () => {
-    render(<VgButton onClick={() => {}}><span>🚀</span> Rocket</VgButton>);
+    render(
+      <VgButton onClick={() => {}}>
+        <span>🚀</span> Rocket
+      </VgButton>,
+    );
     expect(screen.getByText('🚀')).toBeInTheDocument();
     expect(screen.getByText(/Rocket/)).toBeInTheDocument();
   });

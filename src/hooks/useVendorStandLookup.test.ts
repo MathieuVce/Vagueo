@@ -5,7 +5,9 @@ import { getDocs } from 'firebase/firestore';
 
 // STAND_ID = 'stand_01' from setup.ts — hook must be a no-op
 describe('useVendorStandLookup — STAND_ID défini', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it('returns "none" immediately without querying Firestore', async () => {
     const { result } = renderHook(() =>

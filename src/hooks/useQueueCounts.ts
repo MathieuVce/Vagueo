@@ -28,7 +28,10 @@ export function useQueueCounts(enabled: boolean): UseQueueCountsReturn {
     );
     const unsubP = onSnapshot(qPresent, (s) => setPresentCount(s.size));
     const unsubW = onSnapshot(qWaiting, (s) => setWaitingCount(s.size));
-    return () => { unsubP(); unsubW(); };
+    return () => {
+      unsubP();
+      unsubW();
+    };
   }, [enabled]);
 
   return { presentCount, waitingCount };

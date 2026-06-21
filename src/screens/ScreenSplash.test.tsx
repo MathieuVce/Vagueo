@@ -11,11 +11,11 @@ describe('ScreenSplash', () => {
 
   it('renders stand name and logo if provided', () => {
     render(
-      <ScreenSplash 
-        onJoin={() => {}} 
-        standName="Magic Crepes" 
-        logoUrl="https://example.com/logo.png" 
-      />
+      <ScreenSplash
+        onJoin={() => {}}
+        standName="Magic Crepes"
+        logoUrl="https://example.com/logo.png"
+      />,
     );
     expect(screen.getByText('Magic Crepes')).toBeInTheDocument();
     const img = screen.getByRole('img');

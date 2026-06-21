@@ -1,26 +1,37 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  doc, onSnapshot, updateDoc, setDoc,
-  serverTimestamp, increment, deleteField,
+  doc,
+  onSnapshot,
+  updateDoc,
+  setDoc,
+  serverTimestamp,
+  increment,
+  deleteField,
 } from 'firebase/firestore';
 import { db } from '../firebase.ts';
 import type { Stand } from '../types.ts';
 import {
-  STAND_ID, SECURE_COLORS,
-  FLOW_RATE_DEFAULT, FLOW_SLOW_DEFAULT, FLOW_SPRINT_DEFAULT, calcMinPerPerson,
+  STAND_ID,
+  SECURE_COLORS,
+  FLOW_RATE_DEFAULT,
+  FLOW_SLOW_DEFAULT,
+  FLOW_SPRINT_DEFAULT,
+  calcMinPerPerson,
 } from '../tokens.ts';
 
 const DEFAULT_STAND: Omit<Stand, 'secure_color'> = {
-  current_wave:   0,
-  queue_counter:  0,
-  is_paused:      false,
-  is_open:        false,
-  flow_rate:      FLOW_RATE_DEFAULT,
-  flow_slow:      FLOW_SLOW_DEFAULT,
-  flow_sprint:    FLOW_SPRINT_DEFAULT,
+  current_wave: 0,
+  queue_counter: 0,
+  fill_wave: 0,
+  fill_count: 0,
+  is_paused: false,
+  is_open: false,
+  flow_rate: FLOW_RATE_DEFAULT,
+  flow_slow: FLOW_SLOW_DEFAULT,
+  flow_sprint: FLOW_SPRINT_DEFAULT,
   min_per_person: calcMinPerPerson(FLOW_RATE_DEFAULT),
-  name:           '',
-  logo_url:       '',
+  name: '',
+  logo_url: '',
 };
 
 export interface ConfigureParams {
@@ -62,7 +73,11 @@ export function useStand(options?: UseStandOptions): [Stand | null, StandActions
         const secure_color = SECURE_COLORS[(data.current_wave ?? 0) % SECURE_COLORS.length].hex;
         setStand({ ...data, secure_color });
       } else if (autoCreate) {
-        await setDoc(standRef, { ...DEFAULT_STAND, status: 'pending_approval', createdAt: serverTimestamp() });
+        await setDoc(standRef, {
+          ...DEFAULT_STAND,
+          status: 'pending_approval',
+          createdAt: serverTimestamp(),
+        });
       }
     });
     return unsub;
@@ -72,17 +87,20 @@ export function useStand(options?: UseStandOptions): [Stand | null, StandActions
     await updateDoc(standRef, { current_wave: increment(1) });
   }, []);
 
-  const setFlowRate = useCallback(async (delta: number) => {
-    if (!stand) return;
-    const next = Math.min(5, Math.max(1, (stand.flow_rate ?? FLOW_RATE_DEFAULT) + delta));
-    // Reset EMA so the slider base takes full immediate effect; learning resumes from scratch.
-    await updateDoc(standRef, {
-      flow_rate:       next,
-      min_per_person:  calcMinPerPerson(next, stand.flow_slow, stand.flow_sprint),
-      service_ms_ema:  deleteField(),
-      service_count:   0,
-    });
-  }, [stand]);
+  const setFlowRate = useCallback(
+    async (delta: number) => {
+      if (!stand) return;
+      const next = Math.min(5, Math.max(1, (stand.flow_rate ?? FLOW_RATE_DEFAULT) + delta));
+      // Reset EMA so the slider base takes full immediate effect; learning resumes from scratch.
+      await updateDoc(standRef, {
+        flow_rate: next,
+        min_per_person: calcMinPerPerson(next, stand.flow_slow, stand.flow_sprint),
+        service_ms_ema: deleteField(),
+        service_count: 0,
+      });
+    },
+    [stand],
+  );
 
   const togglePause = useCallback(async () => {
     if (!stand) return;
@@ -95,29 +113,45 @@ export function useStand(options?: UseStandOptions): [Stand | null, StandActions
   }, [stand]);
 
   // First-time setup or settings edit
-  const configure = useCallback(async ({ name, logoUrl, address, isOpen, flowSlow, flowSprint, maxQueueSize, maxDelayed, callAheadMin }: ConfigureParams) => {
-    const slow   = Number(flowSlow)   || FLOW_SLOW_DEFAULT;
-    const sprint = Number(flowSprint) || FLOW_SPRINT_DEFAULT;
-    const rate   = stand?.flow_rate ?? FLOW_RATE_DEFAULT;
-    await updateDoc(standRef, {
-      name:            name.trim(),
-      logo_url:        logoUrl.trim(),
-      address:         address.trim(),
-      is_open:         isOpen,
-      flow_slow:       slow,
-      flow_sprint:     sprint,
-      min_per_person:  calcMinPerPerson(rate, slow, sprint),
-      max_queue_size:  maxQueueSize,
-      max_delayed:     maxDelayed,
-      call_ahead_min:  callAheadMin,
-    });
-  }, [stand]);
+  const configure = useCallback(
+    async ({
+      name,
+      logoUrl,
+      address,
+      isOpen,
+      flowSlow,
+      flowSprint,
+      maxQueueSize,
+      maxDelayed,
+      callAheadMin,
+    }: ConfigureParams) => {
+      const slow = Number(flowSlow) || FLOW_SLOW_DEFAULT;
+      const sprint = Number(flowSprint) || FLOW_SPRINT_DEFAULT;
+      const rate = stand?.flow_rate ?? FLOW_RATE_DEFAULT;
+      await updateDoc(standRef, {
+        name: name.trim(),
+        logo_url: logoUrl.trim(),
+        address: address.trim(),
+        is_open: isOpen,
+        flow_slow: slow,
+        flow_sprint: sprint,
+        min_per_person: calcMinPerPerson(rate, slow, sprint),
+        max_queue_size: maxQueueSize,
+        max_delayed: maxDelayed,
+        call_ahead_min: callAheadMin,
+      });
+    },
+    [stand],
+  );
 
   // Links this stand to a Google-authenticated vendor UID + email (called once, on first login)
-  const claimStand = useCallback(async (uid: string, email: string | null) => {
-    if (!stand || stand.vendor_uid) return;
-    await updateDoc(standRef, { vendor_uid: uid, vendor_email: email ?? '' });
-  }, [stand]);
+  const claimStand = useCallback(
+    async (uid: string, email: string | null) => {
+      if (!stand || stand.vendor_uid) return;
+      await updateDoc(standRef, { vendor_uid: uid, vendor_email: email ?? '' });
+    },
+    [stand],
+  );
 
   return [stand, { advance, setFlowRate, togglePause, toggleOpen, configure, claimStand }];
 }

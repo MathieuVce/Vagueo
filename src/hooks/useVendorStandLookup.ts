@@ -22,16 +22,16 @@ export function useVendorStandLookup(user: User | null | undefined): StandLookup
     if (STAND_ID || !user || user.isAnonymous) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setResult('loading');
-    getDocs(
-      query(collection(db, 'stands'), where('vendor_uid', '==', user.uid), limit(1)),
-    ).then((snap) => {
-      if (!snap.empty) {
-        window.location.replace(`/vendor?stand=${snap.docs[0].id}`);
-        setResult('redirecting');
-      } else {
-        setResult('none');
-      }
-    }).catch(() => setResult('none'));
+    getDocs(query(collection(db, 'stands'), where('vendor_uid', '==', user.uid), limit(1)))
+      .then((snap) => {
+        if (!snap.empty) {
+          window.location.replace(`/vendor?stand=${snap.docs[0].id}`);
+          setResult('redirecting');
+        } else {
+          setResult('none');
+        }
+      })
+      .catch(() => setResult('none'));
   }, [user?.uid, user?.isAnonymous]);
 
   return result;
