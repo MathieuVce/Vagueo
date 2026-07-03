@@ -17,6 +17,10 @@ interface UseVendorAuthReturn {
   isAuthorized: boolean;
   isOwner: boolean;
   isUnclaimed: boolean;
+  // Rôle admin réel : custom claim `admin` (posé via scripts/set-admin-claim.mjs),
+  // lu depuis le token. Les règles Firestore l'appliquent côté serveur ; ce booléen
+  // ne fait que piloter l'affichage.
+  isAdmin: boolean;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
   error: string | null;
@@ -27,13 +31,25 @@ interface UseVendorAuthReturn {
 export function useVendorAuth(stand: Stand | null): UseVendorAuthReturn {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Pick up redirect result on mobile (fired before onAuthStateChanged)
     getRedirectResult(auth).catch(() => {});
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      // Résout le claim admin AVANT de lever loading (évite un flash « accès refusé »).
+      if (u && !u.isAnonymous) {
+        try {
+          const res = await u.getIdTokenResult();
+          setIsAdmin(res.claims.admin === true);
+        } catch {
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
       setLoading(false);
     });
     return unsub;
@@ -69,5 +85,5 @@ export function useVendorAuth(stand: Stand | null): UseVendorAuthReturn {
   const isOwner = isGoogle && !!stand && stand.vendor_uid === user?.uid;
   const isAuthorized = isOwner || isUnclaimed;
 
-  return { user, loading, isAuthorized, isOwner, isUnclaimed, signIn, signOut, error };
+  return { user, loading, isAuthorized, isOwner, isUnclaimed, isAdmin, signIn, signOut, error };
 }

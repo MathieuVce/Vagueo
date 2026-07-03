@@ -172,4 +172,21 @@ min_per_person`. Décaler (`requestDelay`) repousse de `DELAY_WAVES` vague(s).
   sur le stand ; il ne peut supprimer que **son** doc queue. Garder [firestore.rules](firestore.rules)
   synchro avec toute nouvelle écriture client.
 - Liaison vendeur : un compte Google ne peut écraser `vendor_uid` que si le stand n'est pas déjà lié
-  (anti-vol de stand) ; `deleteField()` (déliaison admin) reste autorisé.
+  (anti-vol de stand) ; `deleteField()` (déliaison) est réservé à l'**admin** (custom claim).
+- Rôle admin = **custom claim `admin`** (posé hors bande via [scripts/set-admin-claim.mjs](scripts/set-admin-claim.mjs),
+  Admin SDK + service account, gratuit). Les règles l'appliquent (`isAdmin()`) ; `useVendorAuth` le lit
+  pour l'UI seulement. Poser le claim **avant** de déployer les règles (sinon auto-verrouillage), puis
+  se reconnecter pour rafraîchir le token.
+- Anti-triche queue en règles : un client anonyme ne peut, sur SON doc, qu'effectuer des transitions
+  légales (jamais baisser `wave_number`, entrer en `claimed` uniquement depuis `orange`, en `orange`
+  seulement à ≤ `CALL_AHEAD_WAVES` vagues, ne pas réinitialiser `delay_used`). Le heartbeat `last_seen`
+  seul a un chemin dédié **sans `get(stand)`** (évite un read facturé par battement). **Couplage
+  rules↔tokens** : le seuil `1` (= `CALL_AHEAD_WAVES`) est codé en dur dans [firestore.rules](firestore.rules) ;
+  le garder synchro avec [src/tokens.ts](src/tokens.ts).
+- `devSet` (barre DEV client) : sous les règles durcies, forcer `orange`/`claimed` en abaissant la vague
+  est interdit. L'outil repart donc d'un doc `waiting` neuf (delete + create légal) puis applique les
+  transitions **vers l'avant** (waiting→orange→claimed). Ne pas « rétro-éditer » le statut directement.
+- Résidu assumé (100 % gratuit, pas de Function) : `service_ms_ema`/`min_per_person` restent écrits par
+  le client (seulement **bornés** en règles) → un abus fausse une estimation, pas l'intégrité de la file.
+  Levé au passage Blaze (trigger `onQueueDeleted`). App Check (anti-abus de quota) volontairement non
+  activé : non nécessaire au modèle de sécurité (porté par les règles) ; ré-ajoutable si besoin.
