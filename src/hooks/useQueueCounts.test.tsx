@@ -20,13 +20,21 @@ describe('useQueueCounts', () => {
 
     const { result } = renderHook(() => useQueueCounts(true));
 
+    // qWaiting expose forEach (QuerySnapshot) → sert à calculer minActiveWave.
+    const waves = [4, 2, 7];
+    const waitingSnap = {
+      size: 12,
+      forEach: (fn: any) => waves.forEach((w) => fn({ data: () => ({ wave_number: w }) })),
+    };
+
     act(() => {
       callback1({ size: 5 });
-      callback2({ size: 12 });
+      callback2(waitingSnap);
     });
 
     expect(result.current.presentCount).toBe(5);
     expect(result.current.waitingCount).toBe(12);
+    expect(result.current.minActiveWave).toBe(2);
   });
 
   it('does nothing when disabled', () => {
