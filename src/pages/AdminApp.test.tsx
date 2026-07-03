@@ -52,6 +52,7 @@ describe('AdminApp', () => {
   const mockAuth: any = {
     user: { uid: 'a1', email: 'admin@vagueo.com', isAnonymous: false },
     loading: false,
+    isAdmin: true,
     signIn: vi.fn(),
     signOut: vi.fn(),
     error: null,
@@ -60,7 +61,6 @@ describe('AdminApp', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue(mockAuth);
-    vi.stubEnv('VITE_ADMIN_EMAIL', 'admin@vagueo.com');
     mockSnapshotWith([]);
   });
 
@@ -109,10 +109,11 @@ describe('AdminApp', () => {
     expect(screen.getByText(/Connexion refusée/i)).toBeInTheDocument();
   });
 
-  it('shows access denied when email does not match VITE_ADMIN_EMAIL', () => {
+  it('shows access denied for a Google account without the admin claim', () => {
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({
       ...mockAuth,
       user: { uid: 'x', email: 'other@example.com', isAnonymous: false },
+      isAdmin: false,
     });
     render(<AdminApp />);
     expect(screen.getByText(/Accès refusé/i)).toBeInTheDocument();
@@ -122,6 +123,7 @@ describe('AdminApp', () => {
     (useVendorAuthHook.useVendorAuth as any).mockReturnValue({
       ...mockAuth,
       user: { uid: 'x', email: 'other@example.com', isAnonymous: false },
+      isAdmin: false,
     });
     render(<AdminApp />);
     fireEvent.click(screen.getByText(/Se déconnecter/i));

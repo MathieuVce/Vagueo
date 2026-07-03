@@ -4,6 +4,7 @@ import {
   doc,
   onSnapshot,
   updateDoc,
+  setDoc,
   deleteDoc,
   serverTimestamp,
   collection,
@@ -336,24 +337,37 @@ export function useClientSession(
     await deleteDoc(doc(db, 'queue', uid));
   }, [uid]);
 
-  // Dev : place sa propre session sur l'écran voulu en éditant son doc queue
-  // (autorisé par les règles : un client peut écrire son propre doc). bleu =
-  // 'waiting' (2 vagues d'écart), orange = 'orange', validation = 'claimed'.
+  // Dev : place sa propre session sur l'écran voulu. Les règles durcies
+  // interdisent d'abaisser wave_number ou de forcer un statut hors transition
+  // légale (anti-triche). On repart donc d'un doc 'waiting' neuf à la bonne
+  // vague, puis on applique les transitions LÉGALES vers l'avant :
+  //   bleu → waiting (2 vagues d'écart, reste rouge)
+  //   orange → waiting proche (1 vague) puis waiting→orange
+  //   validation → …→orange→claimed
   const devSet = useCallback(
     async (target: 'waiting' | 'orange' | 'claimed') => {
       if (!uid) return;
       const cw = stand?.current_wave ?? 0;
       const ref = doc(db, 'queue', uid);
-      if (target === 'waiting') {
-        await updateDoc(ref, { status: 'waiting', wave_number: cw + 2, called_at: deleteField() });
-      } else if (target === 'orange') {
+      await deleteDoc(ref).catch(() => {});
+      await setDoc(ref, {
+        uid,
+        stand_id: STAND_ID,
+        wave_number: target === 'waiting' ? cw + 2 : cw + 1,
+        status: 'waiting',
+        has_confirmed_presence: false,
+        delay_used: false,
+        timestamp: serverTimestamp(),
+      });
+      if (target === 'orange' || target === 'claimed') {
+        await updateDoc(ref, { status: 'orange', called_at: serverTimestamp() });
+      }
+      if (target === 'claimed') {
         await updateDoc(ref, {
-          status: 'orange',
-          wave_number: cw + 1,
-          called_at: serverTimestamp(),
+          status: 'claimed',
+          has_confirmed_presence: true,
+          claimed_at: serverTimestamp(),
         });
-      } else {
-        await updateDoc(ref, { status: 'claimed', claimed_at: serverTimestamp() });
       }
     },
     [uid, stand?.current_wave],

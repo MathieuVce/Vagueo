@@ -1173,7 +1173,7 @@ function AdminLogin({ onSignIn, error }: { onSignIn: () => void; error: string |
 
 // ─── Main ─────────────────────────────────────────────────────────
 export default function AdminApp() {
-  const { user, loading, signIn, signOut, error } = useVendorAuth(null);
+  const { user, loading, isAdmin, signIn, signOut, error } = useVendorAuth(null);
   const [stands, setStands] = useState<StandDoc[]>([]);
   const [editing, setEditing] = useState<StandDoc | null>(null);
   const [statsStand, setStatsStand] = useState<StandDoc | null>(null);
@@ -1219,8 +1219,9 @@ export default function AdminApp() {
 
   if (!user || user.isAnonymous) return <AdminLogin onSignIn={signIn} error={error} />;
 
-  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL as string | undefined;
-  if (adminEmail && user.email !== adminEmail) {
+  // Autorisation admin = custom claim `admin` (appliqué côté serveur par les
+  // règles Firestore). Fail-closed : sans le claim, accès refusé.
+  if (!isAdmin) {
     return (
       <div
         style={{

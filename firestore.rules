@@ -2,81 +2,180 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ─── Helpers ──────────────────────────────────────────────────
+    function isSignedIn() { return request.auth != null; }
+    // Google (non-anonyme) = vendeur ou admin.
+    function isGoogle() {
+      return isSignedIn()
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+    // Admin réel : custom claim posé hors bande (scripts/set-admin-claim.mjs).
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+    // Données d'un stand (lecture facturée : get()).
+    function standData(sid) {
+      return get(/databases/$(database)/documents/stands/$(sid)).data;
+    }
+
     // ─── Stands ───────────────────────────────────────────────────
     match /stands/{standId} {
-      // Lecture publique (clients et vendeurs)
+      // Lecture publique (clients et vendeurs). NB : vendor_email reste exposé
+      // ici (suivi court : relocalisation en sous-doc privé).
       allow read: if true;
 
-      // Création : tout utilisateur authentifié (autoCreate vendeur, admin)
-      allow create: if request.auth != null;
+      // Création : compte Google uniquement (autoCreate vendeur, admin).
+      allow create: if isGoogle();
 
-      // Modification :
-      //   1. Vendeur propriétaire (vendor_uid correspond)
-      //   2. Google non-anonyme (admin) : peut tout faire SAUF écrire vendor_uid
-      //      sur un stand déjà claimed (prévient le vol de stand).
-      //      Exception : deleteField() sur vendor_uid est autorisé (déliaison admin).
-      //   3. Client anonyme : champs EMA/file uniquement
-      allow update: if request.auth != null && (
-        // Propriétaire du stand
-        request.auth.uid == resource.data.vendor_uid
-        ||
-        // Google non-anonyme : modifications libres sauf remplacement de vendor_uid sur stand claimed
-        (request.auth.token.firebase.sign_in_provider != 'anonymous'
-         && (
-           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['vendor_uid'])
-           || resource.data.get('vendor_uid', '') == ''
-           || !('vendor_uid' in request.resource.data)
-         ))
-        ||
-        // Client anonyme : compteurs de file/vagues, notes, EMA
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'queue_counter', 'fill_wave', 'fill_count',
-          'rating_count', 'rating_sum',
-          'service_ms_ema', 'service_count', 'min_per_person'
-        ])
+      function changed() {
+        return request.resource.data.diff(resource.data).affectedKeys();
+      }
+      // Propriétaire : modifie son stand, sans jamais toucher vendor_uid.
+      function isOwnerEdit() {
+        return resource.data.get('vendor_uid', '') == request.auth.uid
+          && request.resource.data.get('vendor_uid', '')
+             == resource.data.get('vendor_uid', '');
+      }
+      // Claim d'un stand libre : un Google se lie à un stand sans propriétaire.
+      function isClaim() {
+        return isGoogle()
+          && resource.data.get('vendor_uid', '') == ''
+          && request.resource.data.vendor_uid == request.auth.uid
+          && changed().hasOnly(['vendor_uid', 'vendor_email']);
+      }
+      // Anonyme : assemblage de vague (fill_*) — entiers positifs.
+      function isAnonWaveEdit() {
+        return changed().hasOnly(['fill_wave', 'fill_count'])
+          && request.resource.data.fill_wave is int
+          && request.resource.data.fill_wave >= 0
+          && request.resource.data.fill_count is int
+          && request.resource.data.fill_count >= 0;
+      }
+      // Anonyme : apprentissage/notes — valeurs bornées (recompute EMA
+      // impossible en règles → on borne ; résidu assumé, cf. plan P0).
+      function ratingDeltaOk() {
+        return !changed().hasAny(['rating_count', 'rating_sum'])
+          || (
+            request.resource.data.rating_count == resource.data.get('rating_count', 0) + 1
+            && request.resource.data.rating_sum >= resource.data.get('rating_sum', 0) + 1
+            && request.resource.data.rating_sum <= resource.data.get('rating_sum', 0) + 5
+          );
+      }
+      function isAnonLearnEdit() {
+        return changed().hasOnly([
+            'service_ms_ema', 'service_count', 'min_per_person',
+            'rating_count', 'rating_sum'
+          ])
+          && request.resource.data.get('min_per_person', 0) >= 0
+          && request.resource.data.get('min_per_person', 0) <= 60
+          && request.resource.data.get('service_ms_ema', 1) > 0
+          && request.resource.data.get('service_count', 0)
+             >= resource.data.get('service_count', 0)
+          && ratingDeltaOk();
+      }
+
+      allow update: if isSignedIn() && (
+        isAdmin()
+        || isOwnerEdit()
+        || isClaim()
+        || (!isGoogle() && (isAnonWaveEdit() || isAnonLearnEdit()))
       );
 
-      // Suppression : vendeur propriétaire ou utilisateur Google (admin)
-      allow delete: if request.auth != null
-        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      // Suppression : admin uniquement (isolation entre vendeurs).
+      allow delete: if isAdmin();
 
       // ─── Historique ─────────────────────────────────────────────
       match /history/{entryId} {
-        // Lecture : tout utilisateur Google authentifié (non-anonyme)
-        // Le get() sur vendor_uid échoue si le champ est absent — on évite ce cas
-        // en acceptant tout compte Google, ce qui suffit pour un MVP monovendeur.
-        allow read: if request.auth != null
-          && request.auth.token.firebase.sign_in_provider != 'anonymous';
+        // Lecture : propriétaire du stand ou admin.
+        allow read: if isAdmin()
+          || standData(standId).get('vendor_uid', '') == request.auth.uid;
 
-        // Écriture : tout utilisateur authentifié (clients anonymes inclus)
-        allow create: if request.auth != null;
+        // Création : un client ne crée que SA propre entrée ; le vendeur/admin
+        // (reaper, outils) peut créer. Note bornée si présente.
+        allow create: if isSignedIn()
+          && (request.resource.data.uid == request.auth.uid || isGoogle())
+          && (
+            !('rating' in request.resource.data)
+            || (request.resource.data.rating is int
+                && request.resource.data.rating >= 1
+                && request.resource.data.rating <= 5)
+          );
       }
     }
 
     // ─── File d'attente ───────────────────────────────────────────
     match /queue/{userId} {
-      // Lecture : tout utilisateur authentifié
-      // (nécessaire pour les requêtes de comptage côté vendeur et client)
-      allow read: if request.auth != null;
+      // Lecture : tout utilisateur authentifié (comptages vendeur/client).
+      allow read: if isSignedIn();
 
-      // Création : son propre document, ou un compte Google (vendeur/admin, pour les outils dev)
-      allow create: if request.auth != null && (
-        request.auth.uid == userId
-        || request.auth.token.firebase.sign_in_provider != 'anonymous'
+      function isVendorOfQueue() {
+        return standData(resource.data.stand_id).get('vendor_uid', '')
+          == request.auth.uid;
+      }
+      function changedQ() {
+        return request.resource.data.diff(resource.data).affectedKeys();
+      }
+      // Forme initiale légale : on naît en attente, sans avance ni décalage,
+      // sur une vague >= à la vague en cours (interdit de sauter la file).
+      function isValidInitial() {
+        return request.resource.data.status == 'waiting'
+          && request.resource.data.delay_used == false
+          && request.resource.data.has_confirmed_presence == false
+          && request.resource.data.wave_number is int
+          && request.resource.data.wave_number
+             >= standData(request.resource.data.stand_id).get('current_wave', 0);
+      }
+      // Transitions client légales sur son propre doc.
+      function waveNeverDecreases() {
+        return request.resource.data.wave_number >= resource.data.wave_number;
+      }
+      // On n'entre en 'claimed' que depuis 'orange'.
+      function claimOnlyFromOrange() {
+        return !(request.resource.data.status == 'claimed'
+                 && resource.data.status != 'claimed'
+                 && resource.data.status != 'orange');
+      }
+      // On n'entre en 'orange' que depuis 'waiting' et à <= CALL_AHEAD_WAVES (=1)
+      // vagues de current_wave. Couplage rules↔tokens : garder synchro.
+      function orangeOnlyWhenClose() {
+        return !(request.resource.data.status == 'orange'
+                 && resource.data.status != 'orange'
+                 && !(resource.data.status == 'waiting'
+                      && resource.data.wave_number
+                         - standData(resource.data.stand_id).get('current_wave', 0) <= 1));
+      }
+      // delay_used ne repasse jamais de true à false.
+      function delayNotReset() {
+        return !(resource.data.get('delay_used', false) == true
+                 && request.resource.data.get('delay_used', false) == false);
+      }
+      function isSelfValidUpdate() {
+        return waveNeverDecreases()
+          && claimOnlyFromOrange()
+          && orangeOnlyWhenClose()
+          && delayNotReset();
+      }
+
+      // Création : soi avec forme initiale valide, ou un Google (outils dev).
+      allow create: if isSignedIn() && (
+        (request.auth.uid == userId && isValidInitial())
+        || isGoogle()
       );
 
-      // Mise à jour : le client (son propre doc) ou le vendeur du stand concerné
-      allow update: if request.auth != null && (
-        request.auth.uid == userId
-        ||
-        get(/databases/$(database)/documents/stands/$(resource.data.stand_id)).data.vendor_uid == request.auth.uid
+      // Mise à jour : admin ; soi (heartbeat last_seen seul, sans get(stand)) ;
+      // soi avec transitions valides ; ou le vendeur du stand.
+      allow update: if isSignedIn() && (
+        isAdmin()
+        || (request.auth.uid == userId && changedQ().hasOnly(['last_seen']))
+        || (request.auth.uid == userId && isSelfValidUpdate())
+        || isVendorOfQueue()
       );
 
-      // Suppression : le client supprime son propre doc (leave/done),
-      // ou un compte Google (vendeur/admin — outils dev)
-      allow delete: if request.auth != null && (
+      // Suppression : soi (leave/done), le vendeur du stand, ou l'admin.
+      allow delete: if isSignedIn() && (
         request.auth.uid == userId
-        || request.auth.token.firebase.sign_in_provider != 'anonymous'
+        || isVendorOfQueue()
+        || isAdmin()
       );
     }
   }
