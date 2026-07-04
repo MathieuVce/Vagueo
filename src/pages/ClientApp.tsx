@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase.ts';
 import { useStand } from '../hooks/useStand.ts';
 import {
   useClientSession,
@@ -45,8 +43,10 @@ export default function ClientApp() {
   const [serviceModal, setServiceModal] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [showMerci, setShowMerci] = useState(false);
-  const [presentCount, setPresentCount] = useState(0);
-  const [activeCount, setActiveCount] = useState(0);
+  // Compteurs lus depuis le doc stand (publiés par l'onglet vendeur), plus de
+  // listener sur toute la collection queue côté client (évite le coût O(C²)).
+  const presentCount = stand?.claimed_count ?? 0;
+  const activeCount = stand?.active_count ?? 0;
 
   const orangePromptRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const orangeRespRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,26 +61,6 @@ export default function ClientApp() {
     }
     prevStep.current = step;
   }, [step]);
-
-  // People physically at the stand (status claimed)
-  useEffect(() => {
-    const q = query(
-      collection(db, 'queue'),
-      where('stand_id', '==', STAND_ID),
-      where('status', '==', 'claimed'),
-    );
-    return onSnapshot(q, (snap) => setPresentCount(snap.size));
-  }, []);
-
-  // Total active queue (for splash screen estimate before joining)
-  useEffect(() => {
-    const q = query(
-      collection(db, 'queue'),
-      where('stand_id', '==', STAND_ID),
-      where('status', 'in', ['waiting', 'orange', 'claimed']),
-    );
-    return onSnapshot(q, (snap) => setActiveCount(snap.size));
-  }, []);
 
   // Orange timeout : proportionnel au nombre de vagues encore devant.
   // Prompt = max(ORANGE_PROMPT_MS, wavesAhead × durée d'une vague).

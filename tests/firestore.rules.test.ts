@@ -124,6 +124,19 @@ describe('Règles Firestore · stands', () => {
   it('client anonyme : ne peut pas créer un stand', async () => {
     await assertFails(setDoc(doc(anon('alice'), 'stands', 'sX'), { name: 'Faux' }));
   });
+
+  // Compteurs agrégés (P1) : publiés par le vendeur, jamais par un anonyme.
+  it('propriétaire : peut publier active_count / claimed_count', async () => {
+    await seed(['stands', 's1'], { name: 'Stand', vendor_uid: 'owner' });
+    await assertSucceeds(
+      updateDoc(doc(google('owner'), 'stands', 's1'), { active_count: 12, claimed_count: 3 }),
+    );
+  });
+
+  it('client anonyme : ne peut pas écrire active_count', async () => {
+    await seed(['stands', 's1'], { name: 'Stand' });
+    await assertFails(updateDoc(doc(anon('alice'), 'stands', 's1'), { active_count: 99 }));
+  });
 });
 
 describe('Règles Firestore · liaison vendeur', () => {

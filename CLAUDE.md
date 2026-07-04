@@ -122,9 +122,12 @@ Le client ne reçoit **pas** de position/numéro : il rejoint une **vague**, et 
 qui passe. Affectation **hybride** (`join`) : la vague d'assemblage suit `current_wave` (fenêtre de
 temps), plafonnée à `WAVE_SIZE` (le surplus déborde sur la vague suivante). `WAVE_LEAD = 0` → la vague
 d'assemblage **est** `current_wave`, donc « groupe servi = `current_wave` », le premier groupe = vague 0,
-et `wavesAhead` n'est pas gonflé (estimations justes). Avance **auto** : le vendeur incrémente
-`current_wave` toutes les `waveIntervalMs`. La couleur anti-fraude (`secure_color`) tourne par vague →
-tous les membres d'une vague affichent la même quand c'est leur tour.
+et `wavesAhead` n'est pas gonflé (estimations justes). Avance **auto** (aucune action vendeur) :
+piloté par la demande dans [VendorApp](src/pages/VendorApp.tsx) — dès que la vague en cours est écoulée
+(`minActiveWave > current_wave`, les « j'ai fini » font monter le min) on avance tout de suite ; un timer
+`waveIntervalMs` sert de **plafond anti-blocage** si un client ne clique jamais « terminé ». La couleur
+anti-fraude (`secure_color`) tourne par vague → tous les membres d'une vague affichent la même quand
+c'est leur tour.
 
 ## Parcours client (étapes, `useClientSession`)
 
@@ -147,9 +150,17 @@ min_per_person`. Décaler (`requestDelay`) repousse de `DELAY_WAVES` vague(s).
   Bleu / Orange / Validation) force le statut de sa propre session via `actions.devSet` (édite son doc
   queue, autorisé par les règles). Masquée en prod et en test (`import.meta.env.MODE !== 'test'`). Côté
   vendeur, `− attente / + attente` font avancer/reculer `current_wave` pour piloter un onglet client tiers.
-- Conséquence du « avance auto seule » : la cadence est fixe (`waveIntervalMs`), donc un client seul peut
-  attendre ~une vague avant d'être servi. Pour réduire ce délai, baisser `min_per_person` (slider) ou
-  réintroduire une avance manuelle vendeur.
+- Avance de vague (P1) : **demand-driven + plafond timer**. `useQueueCounts` expose `minActiveWave` (plus
+  petite vague active) ; [VendorApp](src/pages/VendorApp.tsx) avance dès que `minActiveWave > current_wave`
+  (vague écoulée) et garde `setInterval(waveIntervalMs)` comme filet. Les gens finissent plus vite → la
+  vague avance plus vite, sans intervention. L'avance vit dans l'onglet vendeur (autorité, toujours ouvert),
+  pas de Function.
+- Coût O(C²) évité (P1) : les clients **n'écoutent plus la collection queue**. L'onglet vendeur publie
+  `active_count`/`claimed_count` sur le doc stand ([VendorApp](src/pages/VendorApp.tsx), écrit seulement au
+  changement), et les clients les lisent depuis le stand qu'ils écoutent déjà ([ClientApp](src/pages/ClientApp.tsx)).
+  Ne **jamais** réintroduire un `onSnapshot` de collection côté client (fan-out quadratique avec le heartbeat).
+  Requêtes queue `stand_id== + status in [...]` (± `delay_used`) → index composites déclarés dans
+  [firestore.indexes.json](firestore.indexes.json) (à déployer : `firebase deploy --only firestore:indexes`).
 - Sorties de file = `deleteDoc` (jamais `status: done`) sinon la collection `queue` accumule des docs
   morts. Les stats lisent l'historique, pas la file, donc rien à craindre côté chiffres.
 - Apprentissage EMA : `setFlowRate` (bouton ± affluence) **réinitialise** l'EMA (`deleteField` +

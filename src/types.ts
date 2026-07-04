@@ -5,6 +5,10 @@ export interface Stand {
   queue_counter: number; // legacy (modèle par position)
   fill_wave?: number; // vague en cours d'assemblage (où atterrissent les arrivants)
   fill_count?: number; // nombre de clients déjà dans fill_wave (plafond WAVE_SIZE)
+  // Compteurs agrégés écrits par l'onglet vendeur (autorité), lus par les clients
+  // depuis ce doc au lieu d'écouter toute la collection queue (évite le coût O(C²)).
+  active_count?: number; // waiting + orange + claimed
+  claimed_count?: number; // claimed (personnes au stand)
   secure_color: string; // computed from current_wave, not stored in Firestore
   is_paused: boolean;
   is_open: boolean;

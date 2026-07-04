@@ -1,10 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
-import { collection, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  onSnapshot,
+  Timestamp,
+} from 'firebase/firestore';
 import { db } from '../firebase.ts';
 import { STAND_ID, PALETTE, FONT, FONT_MONO } from '../tokens.ts';
 import VagueoLogo from '../components/VagueoLogo.tsx';
 
 const BAR_H = 56;
+// Plafond d'entrées d'historique chargées en direct pour les stats (borne le coût
+// et le volume sur les longues périodes ; largement au-dessus d'un usage réel).
+const STATS_MAX_EVENTS = 1000;
 const PERIODS = [
   { key: 'today', label: "Aujourd'hui" },
   { key: 'week', label: 'Semaine' },
@@ -271,10 +282,13 @@ export default function ScreenStats({
     setEvents([]);
     setError(null);
     const start = Timestamp.fromDate(getStartDate(period));
+    // limit borne le volume live (une période « mois » peut être énorme) : on
+    // charge les STATS_MAX_EVENTS entrées les plus récentes de la période.
     const q = query(
       collection(db, 'stands', sid, 'history'),
       where('done_at', '>=', start),
       orderBy('done_at', 'desc'),
+      limit(STATS_MAX_EVENTS),
     );
     return onSnapshot(
       q,

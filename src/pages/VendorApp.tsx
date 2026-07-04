@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase.ts';
 import { useStand } from '../hooks/useStand.ts';
 import { useVendorAuth } from '../hooks/useVendorAuth.ts';
 import { useClock } from '../hooks/useClock.ts';
@@ -36,7 +38,7 @@ export default function VendorApp() {
   const [showQR, setShowQR] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
 
-  const { presentCount, waitingCount } = useQueueCounts(isAuthorized);
+  const { presentCount, waitingCount, minActiveWave } = useQueueCounts(isAuthorized);
   // Filet de sécurité : purge les clients qui ont fermé l'onglet sans cliquer.
   useQueueReaper(isAuthorized, stand?.min_per_person ?? 3, stand?.is_paused ?? false);
   const standLookup = useVendorStandLookup(user);
@@ -61,7 +63,34 @@ export default function VendorApp() {
     waitingRef.current = waitingCount;
   }, [waitingCount]);
 
-  // Auto-advance waves when queue is active
+  // Miroir des compteurs agrégés sur le doc stand : l'onglet vendeur (autorité,
+  // toujours ouvert) publie active_count/claimed_count, que les clients lisent
+  // depuis ce doc au lieu d'écouter toute la collection queue → O(C²) évité.
+  // Écrit seulement quand une valeur change (pas à chaque heartbeat).
+  useEffect(() => {
+    if (!isAuthorized || !STAND_ID || !stand) return;
+    if (stand.active_count === waitingCount && stand.claimed_count === presentCount) return;
+    void updateDoc(doc(db, 'stands', STAND_ID), {
+      active_count: waitingCount,
+      claimed_count: presentCount,
+    });
+  }, [isAuthorized, waitingCount, presentCount, stand?.active_count, stand?.claimed_count]);
+
+  // Avance de vague — 100 % automatique, le vendeur ne touche à rien.
+  //
+  // 1) « On clear » (piloté par la demande) : dès que la vague en cours est
+  //    réellement écoulée (plus aucun client actif à <= current_wave, donc
+  //    minActiveWave > current_wave) et qu'il reste du monde, on avance tout de
+  //    suite. Les « j'ai fini » (deleteDoc) font monter minActiveWave → si les
+  //    gens finissent plus vite, la vague avance plus vite, sans intervention.
+  useEffect(() => {
+    if (!stand || stand.is_paused || !stand.is_open) return;
+    if (waitingCount > 0 && minActiveWave > stand.current_wave) void advance();
+  }, [stand?.current_wave, stand?.is_paused, stand?.is_open, minActiveWave, waitingCount]);
+
+  // 2) Plafond anti-blocage : si un client de la vague en cours ne clique jamais
+  //    « terminé », on avance quand même après waveIntervalMs (cadence qui
+  //    s'ajuste au débit mesuré via l'EMA de min_per_person).
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (!stand || stand.is_paused || !stand.is_open) return;
